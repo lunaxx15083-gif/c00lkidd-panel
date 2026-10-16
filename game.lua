@@ -548,7 +548,7 @@ local function createSliderWithInput(parent, text, min, max, default, callback)
 	end
 
 	sliderBg.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			update(input.Position.X)
 			input.Changed:Connect(function()
@@ -560,7 +560,7 @@ local function createSliderWithInput(parent, text, min, max, default, callback)
 	end)
 
 	sliderBg.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement) then
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			update(input.Position.X)
 		end
 	end)
@@ -1124,6 +1124,16 @@ createLabel(aimbotTab, "AimBot Settings")
 local aimbotEnabled = false
 local aimbotTarget = nil
 local aimbotBodyPart = "Torso"
+local aimbotRange = 100
+
+-- Player filter system
+local playerFilterEnabled = false
+local selectedPlayers = {} -- set: [player] = true
+
+local function isPlayerSelected(p)
+	if not playerFilterEnabled then return true end
+	return selectedPlayers[p] == true
+end
 
 createLabel(aimbotTab, "Target Body Part")
 
@@ -1182,6 +1192,10 @@ createPartButton("Head", "Head")
 createPartButton("Torso", "Torso")
 createPartButton("Legs", "Legs")
 
+createSliderWithInput(aimbotTab, "Aimbot Range", 10, 1000, 100, function(value)
+	aimbotRange = value
+end)
+
 createLabel(aimbotTab, "AimBot Controls")
 
 createButton(aimbotTab, "Enable AimBot", function(active)
@@ -1199,17 +1213,20 @@ createButton(aimbotTab, "Enable AimBot", function(active)
 				local closestPlayer = nil
 					local closestDist = math.huge
 					for _, p in pairs(Players:GetPlayers()) do
-						if p ~= player and p.Character then
+						if p ~= player and p.Character and isPlayerSelected(p) then
 							local hum = p.Character:FindFirstChildOfClass("Humanoid")
 							if hum and hum.Health > 0 then
 								local targetPart = getTargetPart(p.Character)
 								if targetPart then
-									local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
-									if onScreen then
-										local dist = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
-										if dist < closestDist then
-											closestDist = dist
-											closestPlayer = p
+									local dist3D = (targetPart.Position - myHrp.Position).Magnitude
+									if dist3D <= aimbotRange then
+										local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+										if onScreen then
+											local dist = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
+											if dist < closestDist then
+												closestDist = dist
+												closestPlayer = p
+											end
 										end
 									end
 								end
@@ -1227,8 +1244,8 @@ createButton(aimbotTab, "Enable AimBot", function(active)
 					else
 						aimbotTarget = nil
 					end
-				end
-			end
+				end)
+			table.insert(conns, renderConn)
 		end)
 	else
 		stopFeature("AimBot")
@@ -1260,6 +1277,117 @@ createButton(aimbotTab, "Show Target ESP", function(active)
 	else
 		stopFeature("AimbotESP")
 	end
+end)
+
+-- Players tab (player selection list)
+local playersListTab = createTab("Players")
+
+local playerToggleBtn = createButton(playersListTab, "Enable Player Filter", function(active)
+	playerFilterEnabled = active
+end)
+
+createLabel(playersListTab, "Player List (check to target only selected)")
+
+local playersListContainer = Instance.new("Frame")
+playersListContainer.Size = UDim2.new(1, 0, 0, 0)
+playersListContainer.BackgroundTransparency = 1
+playersListContainer.AutomaticSize = Enum.AutomaticSize.Y
+playersListContainer.Parent = playersListTab
+
+local playersListLayout = Instance.new("UIListLayout")
+playersListLayout.Padding = UDim.new(0, 4)
+playersListLayout.Parent = playersListContainer
+
+local playerListEntries = {} -- [player] = {frame=Frame, checkbox=TextButton}
+
+local function createPlayerListEntry(p)
+	if playerListEntries[p] then return end
+
+	local entry = Instance.new("Frame")
+	entry.Size = UDim2.new(1, 0, 0, 30)
+	entry.BackgroundColor3 = THEME.ButtonBg
+	entry.BorderSizePixel = 0
+	entry.Parent = playersListContainer
+
+	local entryCorner = Instance.new("UICorner")
+	entryCorner.CornerRadius = UDim.new(0, 4)
+	entryCorner.Parent = entry
+
+	local checkbox = Instance.new("TextButton")
+	checkbox.Size = UDim2.new(0, 24, 0, 24)
+	checkbox.Position = UDim2.new(0, 4, 0.5, -12)
+	checkbox.BackgroundColor3 = THEME.ButtonBg
+	checkbox.BorderSizePixel = 0
+	checkbox.Text = ""
+	checkbox.Font = Enum.Font.Code
+	checkbox.TextSize = 16
+	checkbox.TextColor3 = THEME.AccentBright
+	checkbox.Parent = entry
+
+	local cbCorner = Instance.new("UICorner")
+	cbCorner.CornerRadius = UDim.new(0, 4)
+	cbCorner.Parent = checkbox
+
+	local cbStroke = Instance.new("UIStroke")
+	cbStroke.Color = THEME.Accent
+	cbStroke.Thickness = 1
+	cbStroke.Parent = checkbox
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, -36, 1, 0)
+	nameLabel.Position = UDim2.new(0, 34, 0, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = p.Name
+	nameLabel.TextColor3 = THEME.Text
+	nameLabel.Font = Enum.Font.Code
+	nameLabel.TextSize = 13
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.Parent = entry
+
+	local checked = false
+	local function updateVisual()
+		if checked then
+			checkbox.Text = "X"
+			checkbox.BackgroundColor3 = THEME.ButtonActive
+			selectedPlayers[p] = true
+			entry.BackgroundColor3 = THEME.ButtonHover
+		else
+			checkbox.Text = ""
+			checkbox.BackgroundColor3 = THEME.ButtonBg
+			selectedPlayers[p] = nil
+			entry.BackgroundColor3 = THEME.ButtonBg
+		end
+	end
+
+	checkbox.MouseButton1Click:Connect(function()
+		checked = not checked
+		updateVisual()
+	end)
+
+	playerListEntries[p] = {frame = entry, checkbox = checkbox, nameLabel = nameLabel, updateVisual = updateVisual}
+end
+
+local function removePlayerListEntry(p)
+	if playerListEntries[p] then
+		playerListEntries[p].frame:Destroy()
+		playerListEntries[p] = nil
+		selectedPlayers[p] = nil
+	end
+end
+
+-- Populate initial list
+for _, p in pairs(Players:GetPlayers()) do
+	if p ~= player then
+		createPlayerListEntry(p)
+	end
+end
+
+-- Update list when players join/leave
+Players.PlayerAdded:Connect(function(p)
+	createPlayerListEntry(p)
+end)
+Players.PlayerRemoving:Connect(function(p)
+	removePlayerListEntry(p)
 end)
 
 local serverTab = createTab("Server")
@@ -1346,7 +1474,7 @@ createButton(serverTab, "Fling All", function(active)
 			local function getValidTargets()
 				local targets = {}
 				for _, p in pairs(Players:GetPlayers()) do
-					if p ~= player and p.Character then
+					if p ~= player and p.Character and isPlayerSelected(p) then
 						local targetHrp = p.Character:FindFirstChild("HumanoidRootPart")
 						if targetHrp then
 							table.insert(targets, {player = p, hrp = targetHrp})
