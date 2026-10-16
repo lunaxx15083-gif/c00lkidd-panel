@@ -6,6 +6,35 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local featureData = {}
+
+local function startFeature(name, func)
+	if featureData[name] then return end
+	local s = Instance.new("LocalScript")
+	s.Name = name
+	s.Parent = playerGui
+	local data = {script = s, connections = {}}
+	featureData[name] = data
+	data.thread = task.spawn(func, data.connections)
+end
+
+local function stopFeature(name)
+	local data = featureData[name]
+	if not data then return end
+	if data.thread then
+		task.cancel(data.thread)
+	end
+	if data.connections then
+		for _, conn in pairs(data.connections) do
+			conn:Disconnect()
+		end
+	end
+	if data.script then
+		data.script:Destroy()
+	end
+	featureData[name] = nil
+end
+
 local THEME = {
 	Background = Color3.fromRGB(10, 10, 12),
 	TopBar = Color3.fromRGB(20, 0, 0),
@@ -20,8 +49,51 @@ local THEME = {
 	Border = Color3.fromRGB(60, 0, 0),
 }
 
+local oldBanner = playerGui:FindFirstChild("C00lkiddBanner")
+if oldBanner then oldBanner:Destroy() end
+local oldTopText = playerGui:FindFirstChild("C00lkiddTopText")
+if oldTopText then oldTopText:Destroy() end
 local old = playerGui:FindFirstChild("C00lkiddPanel")
 if old then old:Destroy() end
+
+local bannerGui = Instance.new("ScreenGui")
+bannerGui.Name = "C00lkiddBanner"
+bannerGui.ResetOnSpawn = false
+bannerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+bannerGui.IgnoreGuiInset = true
+bannerGui.Parent = playerGui
+
+local banner = Instance.new("TextLabel")
+banner.Name = "BannerText"
+banner.Size = UDim2.new(1, 0, 0, 35)
+banner.Position = UDim2.new(0, 0, 0, 0)
+banner.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+banner.Text = "C00LKID HACKING IS PLACE!"
+banner.TextColor3 = Color3.fromRGB(255, 255, 255)
+banner.Font = Enum.Font.Code
+banner.TextSize = 20
+banner.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+banner.TextStrokeTransparency = 0.3
+banner.Parent = bannerGui
+
+local removeBannerBtn = Instance.new("TextButton")
+removeBannerBtn.Size = UDim2.new(0, 80, 0, 22)
+removeBannerBtn.Position = UDim2.new(1, -85, 0.5, -11)
+removeBannerBtn.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+removeBannerBtn.BorderSizePixel = 0
+removeBannerBtn.Text = "REMOVE"
+removeBannerBtn.TextColor3 = THEME.AccentBright
+removeBannerBtn.Font = Enum.Font.Code
+removeBannerBtn.TextSize = 12
+removeBannerBtn.Parent = banner
+
+local rbCorner = Instance.new("UICorner")
+rbCorner.CornerRadius = UDim.new(0, 4)
+rbCorner.Parent = removeBannerBtn
+
+removeBannerBtn.MouseButton1Click:Connect(function()
+	bannerGui:Destroy()
+end)
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "C00lkiddPanel"
@@ -71,7 +143,7 @@ title.Name = "Title"
 title.Size = UDim2.new(1, -50, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "C00lkidd Panel"
+title.Text = "C00LKID HACKING IS PLACE!"
 title.TextColor3 = THEME.AccentBright
 title.Font = Enum.Font.Code
 title.TextSize = 18
@@ -147,8 +219,69 @@ topBar.InputChanged:Connect(function(input)
 	end
 end)
 
+local reopenGui = Instance.new("ScreenGui")
+reopenGui.Name = "C00lkiddReopen"
+reopenGui.ResetOnSpawn = false
+reopenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+reopenGui.IgnoreGuiInset = true
+reopenGui.Parent = playerGui
+
+local reopenBtn = Instance.new("TextButton")
+reopenBtn.Size = UDim2.new(0, 120, 0, 30)
+reopenBtn.Position = UDim2.new(0, 10, 0, 40)
+reopenBtn.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
+reopenBtn.BorderSizePixel = 0
+reopenBtn.Text = "OPEN PANEL"
+reopenBtn.TextColor3 = THEME.AccentBright
+reopenBtn.Font = Enum.Font.Code
+reopenBtn.TextSize = 13
+reopenBtn.Visible = false
+reopenBtn.Parent = reopenGui
+
+local roCorner = Instance.new("UICorner")
+roCorner.CornerRadius = UDim.new(0, 6)
+roCorner.Parent = reopenBtn
+
+local roStroke = Instance.new("UIStroke")
+roStroke.Color = THEME.Accent
+roStroke.Thickness = 1
+roStroke.Parent = reopenBtn
+
+local reopenDragging = false
+local reopenDragStart = nil
+local reopenStartPos = nil
+
+reopenBtn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		reopenDragging = true
+		reopenDragStart = input.Position
+		reopenStartPos = reopenBtn.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				reopenDragging = false
+			end
+		end)
+	end
+end)
+
+reopenBtn.InputChanged:Connect(function(input)
+	if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and reopenDragging and reopenDragStart and reopenStartPos then
+		local delta = input.Position - reopenDragStart
+		reopenBtn.Position = UDim2.new(
+			reopenStartPos.X.Scale, reopenStartPos.X.Offset + delta.X,
+			reopenStartPos.Y.Scale, reopenStartPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+reopenBtn.MouseButton1Click:Connect(function()
+	screenGui.Enabled = true
+	reopenBtn.Visible = false
+end)
+
 closeBtn.MouseButton1Click:Connect(function()
-	screenGui:Destroy()
+	screenGui.Enabled = false
+	reopenBtn.Visible = true
 end)
 
 closeBtn.MouseEnter:Connect(function()
@@ -527,70 +660,111 @@ end
 
 local playerTab = createTab("Player")
 
-createLabel(playerTab, "-- Player Options")
+createLabel(playerTab, "Player Options")
 
 createButton(playerTab, "WalkSpeed x2", function(active)
-	local char = player.Character
-	if char then
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum.WalkSpeed = active and 32 or 16
+	if active then
+		startFeature("WalkSpeedx2", function()
+			while true do
+				local char = player.Character
+				if char then
+					local hum = char:FindFirstChildOfClass("Humanoid")
+					if hum then
+						hum.WalkSpeed = 32
+					end
+				end
+				task.wait(0.5)
+			end
+			end)
+	else
+		stopFeature("WalkSpeedx2")
+		local char = player.Character
+		if char then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				hum.WalkSpeed = 16
+			end
 		end
 	end
 end)
 
 createButton(playerTab, "JumpPower x2", function(active)
-	local char = player.Character
-	if char then
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum.UseJumpPower = true
-			hum.JumpPower = active and 100 or 50
+	if active then
+		startFeature("JumpPowerx2", function()
+			while true do
+				local char = player.Character
+				if char then
+					local hum = char:FindFirstChildOfClass("Humanoid")
+					if hum then
+						hum.UseJumpPower = true
+						hum.JumpPower = 100
+					end
+				end
+				task.wait(0.5)
+			end
+			end)
+	else
+		stopFeature("JumpPowerx2")
+		local char = player.Character
+		if char then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				hum.JumpPower = 50
+			end
 		end
 	end
 end)
 
 createButton(playerTab, "Infinite Jump", function(active)
 	if active then
-		local conn
-		conn = UserInputService.JumpRequest:Connect(function()
-			local char = player.Character
-			if char then
-				local hum = char:FindFirstChildOfClass("Humanoid")
-				if hum then
-					hum:ChangeState(Enum.HumanoidStateType.Jumping)
+		startFeature("InfJump", function(conns)
+			local conn = UserInputService.JumpRequest:Connect(function()
+				local char = player.Character
+				if char then
+					local hum = char:FindFirstChildOfClass("Humanoid")
+					if hum then
+						hum:ChangeState(Enum.HumanoidStateType.Jumping)
+					end
 				end
-			end
 			end)
-		_G.C00lkiddInfJump = conn
+			table.insert(conns, conn)
+			while true do
+				task.wait(1)
+			end
+		end)
 	else
-		if _G.C00lkiddInfJump then
-			_G.C00lkiddInfJump:Disconnect()
-			_G.C00lkiddInfJump = nil
-		end
+		stopFeature("InfJump")
 	end
 end)
 
 createButton(playerTab, "Noclip", function(active)
-	local function setupNoclip()
+	if active then
+		startFeature("Noclip", function(conns)
+			local conn = RunService.Stepped:Connect(function()
+				local char = player.Character
+				if char then
+					for _, part in pairs(char:GetDescendants()) do
+						if part:IsA("BasePart") then
+							part.CanCollide = false
+						end
+					end
+				end
+			end)
+			table.insert(conns, conn)
+			while true do
+				task.wait(1)
+			end
+		end)
+	else
+		stopFeature("Noclip")
 		local char = player.Character
 		if char then
 			for _, part in pairs(char:GetDescendants()) do
 				if part:IsA("BasePart") then
-					part.CanCollide = not active
+					part.CanCollide = true
 				end
 			end
 		end
-	end
-	setupNoclip()
-	if active then
-		_G.C00lkiddNoclip = RunService.Stepped:Connect(setupNoclip)
-	else
-		if _G.C00lkiddNoclip then
-			_G.C00lkiddNoclip:Disconnect()
-			_G.C00lkiddNoclip = nil
-		end
-		setupNoclip()
 	end
 end)
 
@@ -617,7 +791,7 @@ end)
 
 local visualsTab = createTab("Visuals")
 
-createLabel(visualsTab, "-- Sky Changer")
+createLabel(visualsTab, "Sky Changer")
 
 createInput(visualsTab, "Sky Texture ID:", 178993745, "Apply", function(id)
 	local lighting = game:GetService("Lighting")
@@ -643,7 +817,7 @@ createButton(visualsTab, "Reset Sky", function(active)
 	end
 end)
 
-createLabel(visualsTab, "-- Image / Decal Changer")
+createLabel(visualsTab, "Image / Decal Changer")
 
 createInput(visualsTab, "Image ID:", 178993745, "Apply", function(id)
 	local faces = {
@@ -673,7 +847,7 @@ createInput(visualsTab, "Image ID:", 178993745, "Apply", function(id)
 	end
 end)
 
-createLabel(visualsTab, "-- Music Player")
+createLabel(visualsTab, "Music Player")
 
 local currentSound = nil
 
@@ -728,9 +902,365 @@ createSlider(visualsTab, "Volume", 0, 10, 5, function(value)
 	end
 end)
 
+-- ESP system
+local espObjects = {}
+local espNameObjects = {}
+local espEnabled = false
+local espColor = Color3.fromRGB(255, 50, 50)
+local espShowNames = false
+
+local function addESP(character)
+	if character == player.Character then return end
+	local existing = character:FindFirstChild("C00lkiddESP")
+	if existing then return end
+	local hl = Instance.new("Highlight")
+	hl.Name = "C00lkiddESP"
+	hl.FillColor = espColor
+	hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+	hl.FillTransparency = 0.5
+	hl.OutlineTransparency = 0
+	hl.Parent = character
+	espObjects[character] = hl
+end
+
+local function removeESP(character)
+	local hl = espObjects[character]
+	if hl then
+		hl:Destroy()
+		espObjects[character] = nil
+	end
+	local nl = espNameObjects[character]
+	if nl then
+		nl:Destroy()
+		espNameObjects[character] = nil
+	end
+end
+
+local function clearAllESP()
+	for char, hl in pairs(espObjects) do
+		hl:Destroy()
+	end
+	espObjects = {}
+	for char, nl in pairs(espNameObjects) do
+		nl:Destroy()
+	end
+	espNameObjects = {}
+end
+
+local function addESPName(character, p)
+	if character == player.Character then return end
+	local existing = espNameObjects[character]
+	if existing then existing:Destroy() end
+	local bg = Instance.new("BillboardGui")
+	bg.Name = "C00lkiddName"
+	bg.Size = UDim2.new(0, 200, 0, 30)
+	bg.StudsOffset = Vector3.new(0, 3, 0)
+	bg.AlwaysOnTop = true
+	bg.Parent = character
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 1, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = p.Name
+	lbl.TextColor3 = espColor
+	lbl.Font = Enum.Font.Code
+	lbl.TextSize = 18
+	lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	lbl.TextStrokeTransparency = 0.3
+	lbl.Parent = bg
+	espNameObjects[character] = bg
+end
+
+local function refreshESP()
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= player and p.Character then
+			addESP(p.Character)
+			if espShowNames then
+				addESPName(p.Character, p)
+			end
+		end
+	end
+end
+
+-- ESP tab
+local espTab = createTab("ESP")
+
+createLabel(espTab, "ESP Settings")
+
+createButton(espTab, "Show Players (ESP)", function(active)
+	espEnabled = active
+	if active then
+		startFeature("ESP", function(conns)
+			refreshESP()
+			local conn1 = Players.PlayerAdded:Connect(function(p)
+				p.CharacterAdded:Connect(function(char)
+					task.wait(0.5)
+					if espEnabled then
+						addESP(char)
+						if espShowNames then addESPName(char, p) end
+					end
+				end)
+			end)
+			local conn2 = Players.PlayerRemoving:Connect(function(p)
+				if p.Character then removeESP(p.Character) end
+			end)
+			table.insert(conns, conn1)
+			table.insert(conns, conn2)
+			while true do
+				task.wait(1)
+				refreshESP()
+			end
+		end)
+	else
+		stopFeature("ESP")
+		clearAllESP()
+	end
+end)
+
+createButton(espTab, "Show Names", function(active)
+	espShowNames = active
+	if active then
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character then
+				addESPName(p.Character, p)
+			end
+		end
+	else
+		for char, nl in pairs(espNameObjects) do
+			nl:Destroy()
+		end
+		espNameObjects = {}
+	end
+end)
+
+-- Color picker popup
+local colorPickerFrame = Instance.new("Frame")
+colorPickerFrame.Size = UDim2.new(1, 0, 0, 80)
+colorPickerFrame.BackgroundColor3 = THEME.ButtonBg
+colorPickerFrame.BorderSizePixel = 0
+colorPickerFrame.Visible = false
+colorPickerFrame.Parent = espTab
+
+local cpCorner = Instance.new("UICorner")
+cpCorner.CornerRadius = UDim.new(0, 6)
+cpCorner.Parent = colorPickerFrame
+
+local cpList = Instance.new("UIListLayout")
+cpList.FillDirection = Enum.FillDirection.Horizontal
+cpList.Padding = UDim.new(0, 4)
+cpList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+cpList.VerticalAlignment = Enum.VerticalAlignment.Center
+cpList.Parent = colorPickerFrame
+
+local espColors = {
+	{ name = "Red",    color = Color3.fromRGB(255, 50, 50) },
+	{ name = "Green",  color = Color3.fromRGB(50, 255, 50) },
+	{ name = "Blue",   color = Color3.fromRGB(50, 100, 255) },
+	{ name = "Yellow", color = Color3.fromRGB(255, 255, 50) },
+	{ name = "Purple", color = Color3.fromRGB(200, 50, 255) },
+	{ name = "Cyan",   color = Color3.fromRGB(50, 255, 255) },
+	{ name = "Orange", color = Color3.fromRGB(255, 165, 0) },
+	{ name = "White",  color = Color3.fromRGB(255, 255, 255) },
+}
+
+for _, c in ipairs(espColors) do
+	local cBtn = Instance.new("TextButton")
+	cBtn.Size = UDim2.new(0, 36, 0, 36)
+	cBtn.BackgroundColor3 = c.color
+	cBtn.BorderSizePixel = 0
+	cBtn.Text = ""
+	cBtn.Parent = colorPickerFrame
+
+	local cCorner = Instance.new("UICorner")
+	cCorner.CornerRadius = UDim.new(0, 6)
+	cCorner.Parent = cBtn
+
+	cBtn.MouseButton1Click:Connect(function()
+		espColor = c.color
+		for _, hl in pairs(espObjects) do
+			hl.FillColor = espColor
+		end
+		for _, nl in pairs(espNameObjects) do
+			local lbl = nl:FindFirstChildOfClass("TextLabel")
+			if lbl then
+				lbl.TextColor3 = espColor
+			end
+		end
+	end)
+end
+
+-- Color picker toggle button
+local colorPickerBtn = Instance.new("TextButton")
+colorPickerBtn.Size = UDim2.new(1, 0, 0, 34)
+colorPickerBtn.BackgroundColor3 = THEME.ButtonBg
+colorPickerBtn.BorderSizePixel = 0
+colorPickerBtn.Text = "Change ESP Color"
+colorPickerBtn.TextColor3 = THEME.Text
+colorPickerBtn.Font = Enum.Font.Code
+colorPickerBtn.TextSize = 14
+colorPickerBtn.Parent = espTab
+
+local cpBtnCorner = Instance.new("UICorner")
+cpBtnCorner.CornerRadius = UDim.new(0, 6)
+cpBtnCorner.Parent = colorPickerBtn
+
+colorPickerBtn.MouseEnter:Connect(function()
+	colorPickerBtn.BackgroundColor3 = THEME.ButtonHover
+end)
+colorPickerBtn.MouseLeave:Connect(function()
+	colorPickerBtn.BackgroundColor3 = THEME.ButtonBg
+end)
+
+local cpVisible = false
+colorPickerBtn.MouseButton1Click:Connect(function()
+	cpVisible = not cpVisible
+	colorPickerFrame.Visible = cpVisible
+end)
+
+-- AimBot tab
+local aimbotTab = createTab("AimBot")
+
+createLabel(aimbotTab, "AimBot Settings")
+
+local aimbotEnabled = false
+local aimbotTarget = nil
+local aimbotBodyPart = "Torso"
+
+createLabel(aimbotTab, "Target Body Part")
+
+local partButtons = {}
+
+local function getTargetPart(character)
+	if aimbotBodyPart == "Head" then
+		return character:FindFirstChild("Head")
+	elseif aimbotBodyPart == "Torso" then
+		return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	elseif aimbotBodyPart == "Legs" then
+		return character:FindFirstChild("Left Leg") or character:FindFirstChild("Right Leg") or character:FindFirstChild("LeftLeg") or character:FindFirstChild("RightLeg")
+	end
+end
+
+local function createPartButton(text, partName)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, 0, 0, 30)
+	btn.BackgroundColor3 = (partName == aimbotBodyPart) and THEME.ButtonActive or THEME.ButtonBg
+	btn.BorderSizePixel = 0
+	btn.Text = text
+	btn.TextColor3 = (partName == aimbotBodyPart) and THEME.AccentBright or THEME.Text
+	btn.Font = Enum.Font.Code
+	btn.TextSize = 14
+	btn.Parent = aimbotTab
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = btn
+
+	partButtons[partName] = btn
+
+	btn.MouseButton1Click:Connect(function()
+		aimbotBodyPart = partName
+		for name, b in pairs(partButtons) do
+			b.BackgroundColor3 = THEME.ButtonBg
+			b.TextColor3 = THEME.Text
+		end
+		btn.BackgroundColor3 = THEME.ButtonActive
+		btn.TextColor3 = THEME.AccentBright
+	end)
+
+	btn.MouseEnter:Connect(function()
+		if aimbotBodyPart ~= partName then
+			btn.BackgroundColor3 = THEME.ButtonHover
+		end
+	end)
+	btn.MouseLeave:Connect(function()
+		if aimbotBodyPart ~= partName then
+			btn.BackgroundColor3 = THEME.ButtonBg
+		end
+	end)
+end
+
+createPartButton("Head", "Head")
+createPartButton("Torso", "Torso")
+createPartButton("Legs", "Legs")
+
+createLabel(aimbotTab, "AimBot Controls")
+
+createButton(aimbotTab, "Enable AimBot", function(active)
+	aimbotEnabled = active
+	if active then
+		startFeature("AimBot", function(conns)
+			local camera = workspace.CurrentCamera
+			while true do
+				task.wait(0.05)
+				if aimbotEnabled then
+					local closestPlayer = nil
+					local closestDist = math.huge
+					for _, p in pairs(Players:GetPlayers()) do
+						if p ~= player and p.Character then
+							local hum = p.Character:FindFirstChildOfClass("Humanoid")
+							if hum and hum.Health > 0 then
+								local targetPart = getTargetPart(p.Character)
+								if targetPart then
+									local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+									if onScreen then
+										local dist = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
+										if dist < closestDist then
+											closestDist = dist
+											closestPlayer = p
+										end
+									end
+								end
+							end
+						end
+					end
+					if closestPlayer and closestPlayer.Character then
+						local targetPart = getTargetPart(closestPlayer.Character)
+						if targetPart then
+							local targetPos = targetPart.Position
+							local newLook = (targetPos - camera.CFrame.Position).Unit
+							camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + newLook)
+							aimbotTarget = closestPlayer
+						end
+					else
+						aimbotTarget = nil
+					end
+				end
+			end
+		end)
+	else
+		stopFeature("AimBot")
+		aimbotTarget = nil
+	end
+end)
+
+createButton(aimbotTab, "Show Target ESP", function(active)
+	if active then
+		startFeature("AimbotESP", function(conns)
+			while true do
+				task.wait(0.1)
+				if aimbotTarget and aimbotTarget.Character then
+					local existing = aimbotTarget.Character:FindFirstChild("AimbotTargetHL")
+					if not existing then
+						local hl = Instance.new("Highlight")
+						hl.Name = "AimbotTargetHL"
+						hl.FillColor = Color3.fromRGB(0, 255, 0)
+						hl.OutlineColor = Color3.fromRGB(0, 0, 0)
+						hl.FillTransparency = 0.3
+						hl.Parent = aimbotTarget.Character
+						task.delay(0.2, function()
+							hl:Destroy()
+						end)
+					end
+				end
+			end
+		end)
+	else
+		stopFeature("AimbotESP")
+	end
+end)
+
 local serverTab = createTab("Server")
 
-createLabel(serverTab, "-- Server Info")
+createLabel(serverTab, "Server Info")
 
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.new(1, 0, 0, 60)
@@ -753,19 +1283,25 @@ local function updateServerInfo()
 end
 updateServerInfo()
 
-createLabel(serverTab, "-- Server Actions")
+createLabel(serverTab, "Server Actions")
 
 createButton(serverTab, "FPS Boost", function(active)
 	if active then
-		local lighting = game:GetService("Lighting")
-		lighting.GlobalShadows = false
-		for _, v in pairs(workspace:GetDescendants()) do
-			if v:IsA("BasePart") then
-				v.Material = Enum.Material.Plastic
-				v.Reflectance = 0
+		startFeature("FPSBoost", function()
+			local lighting = game:GetService("Lighting")
+			lighting.GlobalShadows = false
+			for _, v in pairs(workspace:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.Material = Enum.Material.Plastic
+					v.Reflectance = 0
+				end
 			end
-		end
+			while true do
+				task.wait(1)
+			end
+			end)
 	else
+		stopFeature("FPSBoost")
 		game:GetService("Lighting").GlobalShadows = true
 	end
 end)
@@ -807,10 +1343,7 @@ end)
 
 createButton(serverTab, "Anti-AFK", function(active)
 	if active then
-		local vu = game:GetService("VirtualUser")
-		_G.C00lkiddAntiAFK = game:GetService("RunService").RenderStepped:Connect(function()
-		end)
-		_G.C00lkiddAntiAFK2 = task.spawn(function()
+		startFeature("AntiAFK", function()
 			while true do
 				task.wait(120)
 				local char = player.Character
@@ -820,18 +1353,152 @@ createButton(serverTab, "Anti-AFK", function(active)
 					task.wait(0.1)
 					hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 				end
-			end
-		end)
+				end
+			end)
 	else
-		if _G.C00lkiddAntiAFK then
-			_G.C00lkiddAntiAFK:Disconnect()
-			_G.C00lkiddAntiAFK = nil
-		end
-		if _G.C00lkiddAntiAFK2 then
-			task.cancel(_G.C00lkiddAntiAFK2)
-			_G.C00lkiddAntiAFK2 = nil
+		stopFeature("AntiAFK")
+	end
+end)
+
+createLabel(serverTab, "Top Text Display")
+
+local topTextGui = Instance.new("ScreenGui")
+topTextGui.Name = "C00lkiddTopText"
+topTextGui.ResetOnSpawn = false
+topTextGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+topTextGui.IgnoreGuiInset = true
+topTextGui.Parent = playerGui
+
+local topTextLabel = Instance.new("TextLabel")
+topTextLabel.Size = UDim2.new(1, 0, 0, 40)
+topTextLabel.Position = UDim2.new(0, 0, 0, 35)
+topTextLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+topTextLabel.BackgroundTransparency = 0.3
+topTextLabel.Text = ""
+topTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+topTextLabel.Font = Enum.Font.Code
+topTextLabel.TextSize = 24
+topTextLabel.TextWrapped = true
+topTextLabel.Visible = false
+topTextLabel.Parent = topTextGui
+
+local textInputBox = Instance.new("TextBox")
+textInputBox.Size = UDim2.new(1, 0, 0, 80)
+textInputBox.BackgroundColor3 = THEME.ButtonBg
+textInputBox.BorderSizePixel = 0
+textInputBox.Text = ""
+textInputBox.TextColor3 = THEME.Text
+textInputBox.Font = Enum.Font.Code
+textInputBox.TextSize = 13
+textInputBox.MultiLine = true
+textInputBox.PlaceholderText = "Type text to show at top..."
+textInputBox.PlaceholderColor3 = THEME.TextDim
+textInputBox.ClearTextOnFocus = false
+textInputBox.TextWrapped = true
+textInputBox.Parent = serverTab
+
+local textCorner = Instance.new("UICorner")
+textCorner.CornerRadius = UDim.new(0, 6)
+textCorner.Parent = textInputBox
+
+local showTextBtn = Instance.new("TextButton")
+showTextBtn.Size = UDim2.new(1, 0, 0, 34)
+showTextBtn.BackgroundColor3 = THEME.ButtonBg
+showTextBtn.BorderSizePixel = 0
+showTextBtn.Text = "Show Text"
+showTextBtn.TextColor3 = THEME.AccentBright
+showTextBtn.Font = Enum.Font.Code
+showTextBtn.TextSize = 14
+showTextBtn.Parent = serverTab
+
+local showCorner = Instance.new("UICorner")
+showCorner.CornerRadius = UDim.new(0, 6)
+showCorner.Parent = showTextBtn
+
+showTextBtn.MouseEnter:Connect(function()
+	showTextBtn.BackgroundColor3 = THEME.ButtonHover
+end)
+showTextBtn.MouseLeave:Connect(function()
+	showTextBtn.BackgroundColor3 = THEME.ButtonBg
+end)
+
+showTextBtn.MouseButton1Click:Connect(function()
+	local txt = textInputBox.Text
+	if txt and #txt > 0 then
+		topTextLabel.Text = txt
+		topTextLabel.Visible = true
+	else
+		topTextLabel.Visible = false
+	end
+end)
+
+textInputBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local txt = textInputBox.Text
+		if txt and #txt > 0 then
+			topTextLabel.Text = txt
+			topTextLabel.Visible = true
+		else
+			topTextLabel.Visible = false
 		end
 	end
+end)
+
+local hideTextBtn = Instance.new("TextButton")
+hideTextBtn.Size = UDim2.new(1, 0, 0, 34)
+hideTextBtn.BackgroundColor3 = THEME.ButtonBg
+hideTextBtn.BorderSizePixel = 0
+hideTextBtn.Text = "Hide Text"
+hideTextBtn.TextColor3 = THEME.AccentBright
+hideTextBtn.Font = Enum.Font.Code
+hideTextBtn.TextSize = 14
+hideTextBtn.Parent = serverTab
+
+local hideCorner = Instance.new("UICorner")
+hideCorner.CornerRadius = UDim.new(0, 6)
+hideCorner.Parent = hideTextBtn
+
+hideTextBtn.MouseEnter:Connect(function()
+	hideTextBtn.BackgroundColor3 = THEME.ButtonHover
+end)
+hideTextBtn.MouseLeave:Connect(function()
+	hideTextBtn.BackgroundColor3 = THEME.ButtonBg
+end)
+
+hideTextBtn.MouseButton1Click:Connect(function()
+	topTextLabel.Visible = false
+end)
+
+-- Settings tab
+local settingsTab = createTab("Settings")
+
+createLabel(settingsTab, "UI Settings")
+
+createButton(settingsTab, "Hide Top Banner", function(active)
+	if active then
+		bannerGui.Enabled = false
+	else
+		bannerGui.Enabled = true
+	end
+end)
+
+createButton(settingsTab, "Hide Top Text", function(active)
+	if active then
+		topTextGui.Enabled = false
+	else
+		topTextGui.Enabled = true
+	end
+end)
+
+createButton(settingsTab, "Unload Script", function(active)
+	for name, _ in pairs(featureData) do
+		stopFeature(name)
+	end
+	clearAllESP()
+	screenGui:Destroy()
+	bannerGui:Destroy()
+	reopenGui:Destroy()
+	topTextGui:Destroy()
 end)
 
 tabs["Player"].button.TextColor3 = THEME.AccentBright
