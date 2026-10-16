@@ -675,7 +675,7 @@ createButton(playerTab, "WalkSpeed x2", function(active)
 				end
 				task.wait(0.5)
 			end
-			end)
+		end)
 	else
 		stopFeature("WalkSpeedx2")
 		local char = player.Character
@@ -702,7 +702,7 @@ createButton(playerTab, "JumpPower x2", function(active)
 				end
 				task.wait(0.5)
 			end
-			end)
+		end)
 	else
 		stopFeature("JumpPowerx2")
 		local char = player.Character
@@ -1299,7 +1299,7 @@ createButton(serverTab, "FPS Boost", function(active)
 			while true do
 				task.wait(1)
 			end
-			end)
+		end)
 	else
 		stopFeature("FPSBoost")
 		game:GetService("Lighting").GlobalShadows = true
@@ -1317,6 +1317,54 @@ createButton(serverTab, "Explode All Players", function(active)
 				explosion.BlastRadius = 10
 				explosion.BlastPressure = 500000
 				explosion.Parent = workspace
+			end
+		end
+	end
+end)
+
+createButton(serverTab, "Fling All", function(active)
+	if active then
+		startFeature("FlingAll", function(conns)
+			local myChar = player.Character
+			if not myChar then return end
+			local myHrp = myChar:FindFirstChild("HumanoidRootPart")
+			if not myHrp then return end
+
+			-- Create spinning force on our character (very fast rotation)
+			local spin = Instance.new("BodyAngularVelocity")
+			spin.Name = "FlingSpin"
+			spin.AngularVelocity = Vector3.new(0, 99999, 0)
+			spin.MaxTorque = Vector3.new(0, math.huge, 0)
+			spin.P = 10000
+			spin.Parent = myHrp
+
+			-- Continuously teleport into each player to fling them
+			while true do
+				for _, p in pairs(Players:GetPlayers()) do
+					if p ~= player and p.Character then
+						local targetHrp = p.Character:FindFirstChild("HumanoidRootPart")
+						if targetHrp then
+							-- Teleport our HRP into the target player
+							myHrp.CFrame = targetHrp.CFrame
+							task.wait(0.3)
+							-- Small offset to avoid getting stuck
+							myHrp.CFrame = targetHrp.CFrame + Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
+							task.wait(0.2)
+						end
+					end
+				end
+				task.wait(0.1)
+			end
+		end)
+	else
+		stopFeature("FlingAll")
+		-- Remove spinning force
+		local myChar = player.Character
+		if myChar then
+			local myHrp = myChar:FindFirstChild("HumanoidRootPart")
+			if myHrp then
+				local spin = myHrp:FindFirstChild("FlingSpin")
+				if spin then spin:Destroy() end
 			end
 		end
 	end
@@ -1353,8 +1401,8 @@ createButton(serverTab, "Anti-AFK", function(active)
 					task.wait(0.1)
 					hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 				end
-				end
-			end)
+			end
+		end)
 	else
 		stopFeature("AntiAFK")
 	end
