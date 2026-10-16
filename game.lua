@@ -438,7 +438,7 @@ local function createSlider(parent, text, min, max, default, callback)
 	end
 
 	sliderBg.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			update(input.Position.X)
 			input.Changed:Connect(function()
@@ -450,7 +450,7 @@ local function createSlider(parent, text, min, max, default, callback)
 	end)
 
 	sliderBg.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement) then
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			update(input.Position.X)
 		end
 	end)
@@ -1189,10 +1189,14 @@ createButton(aimbotTab, "Enable AimBot", function(active)
 	if active then
 		startFeature("AimBot", function(conns)
 			local camera = workspace.CurrentCamera
-			while true do
-				task.wait(0.05)
-				if aimbotEnabled then
-					local closestPlayer = nil
+			local renderConn
+			renderConn = RunService.RenderStepped:Connect(function()
+				if not aimbotEnabled then return end
+				local myChar = player.Character
+				if not myChar then return end
+				local myHrp = myChar:FindFirstChild("HumanoidRootPart")
+				if not myHrp then return end
+				local closestPlayer = nil
 					local closestDist = math.huge
 					for _, p in pairs(Players:GetPlayers()) do
 						if p ~= player and p.Character then
@@ -1339,19 +1343,58 @@ createButton(serverTab, "Fling All", function(active)
 			spin.Parent = myHrp
 
 			-- Continuously teleport into each player to fling them
-			while true do
+			local function getValidTargets()
+				local targets = {}
 				for _, p in pairs(Players:GetPlayers()) do
 					if p ~= player and p.Character then
 						local targetHrp = p.Character:FindFirstChild("HumanoidRootPart")
 						if targetHrp then
-							-- Teleport our HRP into the target player
-							myHrp.CFrame = targetHrp.CFrame
-							task.wait(0.3)
-							-- Small offset to avoid getting stuck
-							myHrp.CFrame = targetHrp.CFrame + Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
-							task.wait(0.2)
+							table.insert(targets, {player = p, hrp = targetHrp})
 						end
 					end
+				end
+				return targets
+			end
+
+			while true do
+				local targets = getValidTargets()
+				for _, target in pairs(targets) do
+					local targetHrp = target.hrp
+					local targetPlayer = target.player
+
+					-- Record target's position before flinging
+					local startPos = targetHrp.Position
+					local flingStart = tick()
+
+					-- Aggressively teleport into the target in a tight loop
+					-- This keeps us inside the target so spin transfers to them
+					while tick() - flingStart < 5 do
+						-- Check if target still exists
+						if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+							break
+						end
+
+						local nowPos = targetHrp.Position
+						local distFromStart = (nowPos - startPos).Magnitude
+
+						-- Check if target TP'd away (moved more than 50 studs)
+						if distFromStart > 50 then
+							break
+						end
+
+						-- Check if target has been flung (moving fast)
+						local velocity = targetHrp.AssemblyLinearVelocity
+						if velocity.Magnitude > 50 then
+							break
+						end
+
+						-- Keep teleporting directly into the target every frame
+						myHrp.CFrame = targetHrp.CFrame + Vector3.new(math.random(-1, 1), 0, math.random(-1, 1))
+						task.wait(0.03)
+					end
+
+					-- Small delay before moving to next player
+					task.wait(0.1)
 				end
 				task.wait(0.1)
 			end
