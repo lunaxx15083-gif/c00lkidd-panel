@@ -10,7 +10,7 @@ local function scanRemotes()
 	for _, obj in game:GetDescendants() do
 		if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
 			table.insert(foundRemotes, obj)
-			print("[C00lkidd Scan] Найден remote:", obj.ClassName, obj:GetFullName())
+			print("[C00lkidd Scan] remote:", obj.ClassName, obj:GetFullName())
 		end
 	end
 	print("[C00lkidd Scan] remotes: " .. #foundRemotes)
