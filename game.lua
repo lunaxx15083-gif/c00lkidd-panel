@@ -21,7 +21,7 @@ end)
 game.DescendantAdded:Connect(function(obj)
 	if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
 		table.insert(foundRemotes, obj)
-		print("[C00lkidd Scan] Новый remote:", obj.ClassName, obj:GetFullName())
+		print("[C00lkidd Scan] remote:", obj.ClassName, obj:GetFullName())
 	end
 end)
 local function fireAllRemotes(...)
