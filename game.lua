@@ -6,14 +6,51 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- ===== АВТО-СКАН REMOTES =====
+local foundRemotes = {}
+
+local function scanRemotes()
+	table.clear(foundRemotes)
+	for _, obj in game:GetDescendants() do
+		if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+			table.insert(foundRemotes, obj)
+			print("[C00lkidd Scan] Найден remote:", obj.ClassName, obj:GetFullName())
+		end
+	end
+	print("[C00lkidd Scan] Всего remotes: " .. #foundRemotes)
+end
+
+task.spawn(function()
+	scanRemotes()
+end)
+
+game.DescendantAdded:Connect(function(obj)
+	if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+		table.insert(foundRemotes, obj)
+		print("[C00lkidd Scan] Новый remote:", obj.ClassName, obj:GetFullName())
+	end
+end)
+
+-- Стреляет через ВСЕ найденные remotes (любое название)
+local function fireAllRemotes(...)
+	if #foundRemotes == 0 then return false end
+	for _, remote in pairs(foundRemotes) do
+		pcall(function()
+			if remote:IsA("RemoteEvent") then
+				remote:FireServer(...)
+			elseif remote:IsA("RemoteFunction") then
+				remote:InvokeServer(...)
+			end
+		end)
+	end
+	return true
+end
+
 local featureData = {}
 
 local function startFeature(name, func)
 	if featureData[name] then return end
-	local s = Instance.new("LocalScript")
-	s.Name = name
-	s.Parent = playerGui
-	local data = {script = s, connections = {}}
+	local data = {connections = {}}
 	featureData[name] = data
 	data.thread = task.spawn(func, data.connections)
 end
@@ -28,9 +65,6 @@ local function stopFeature(name)
 		for _, conn in pairs(data.connections) do
 			conn:Disconnect()
 		end
-	end
-	if data.script then
-		data.script:Destroy()
 	end
 	featureData[name] = nil
 end
@@ -140,7 +174,7 @@ topBarFill.Parent = topBar
 
 local title = Instance.new("TextLabel")
 title.Name = "Title"
-title.Size = UDim2.new(1, -50, 1, 0)
+title.Size = UDim2.new(1, -130, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "C00LKID HACKING IS PLACE!"
@@ -166,12 +200,56 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 6)
 closeCorner.Parent = closeBtn
 
-local tabContainer = Instance.new("Frame")
+-- Fullscreen toggle (the old +/- size buttons are replaced by one fullscreen button)
+local biggerBtn = Instance.new("TextButton")
+biggerBtn.Name = "Fullscreen"
+biggerBtn.Size = UDim2.new(0, 24, 0, 24)
+biggerBtn.Position = UDim2.new(1, -60, 0.5, -12)
+biggerBtn.BackgroundColor3 = THEME.ButtonBg
+biggerBtn.BorderSizePixel = 0
+biggerBtn.Text = "□"
+biggerBtn.TextColor3 = THEME.AccentBright
+biggerBtn.Font = Enum.Font.Code
+biggerBtn.TextSize = 16
+biggerBtn.Parent = topBar
+local fsCorner = Instance.new("UICorner")
+fsCorner.CornerRadius = UDim.new(0, 5)
+fsCorner.Parent = biggerBtn
+
+local isFullscreen = false
+local previousSize, previousPosition
+biggerBtn.MouseButton1Click:Connect(function()
+	if not isFullscreen then
+		previousSize = panel.Size
+		previousPosition = panel.Position
+		local camera = workspace.CurrentCamera
+		local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
+		panel.Position = UDim2.fromOffset(0, 0)
+		panel.Size = UDim2.fromOffset(viewport.X, viewport.Y)
+		biggerBtn.Text = "↙"
+		isFullscreen = true
+	else
+		panel.Size = previousSize or UDim2.fromOffset(420, 320)
+		panel.Position = previousPosition or UDim2.new(0.5, -210, 0.5, -160)
+		biggerBtn.Text = "□"
+		isFullscreen = false
+	end
+end)
+
+-- C00lkidd avatar убран с панели (был баганый) — теперь только на кнопке reopen
+
+local tabContainer = Instance.new("ScrollingFrame")
 tabContainer.Name = "Tabs"
 tabContainer.Size = UDim2.new(0, 110, 1, -38)
 tabContainer.Position = UDim2.new(0, 0, 0, 38)
 tabContainer.BackgroundColor3 = THEME.SectionBg
 tabContainer.BorderSizePixel = 0
+tabContainer.ScrollBarThickness = 4
+tabContainer.ScrollBarImageColor3 = THEME.Accent
+tabContainer.ScrollingDirection = Enum.ScrollingDirection.Y
+tabContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+tabContainer.ClipsDescendants = true
 tabContainer.Parent = panel
 
 local tabCorner = Instance.new("UICorner")
@@ -219,6 +297,75 @@ topBar.InputChanged:Connect(function(input)
 	end
 end)
 
+-- Resize only from the bottom edge and bottom corners.
+-- Preserve the panel's original Y Position UDim exactly: resizing must never
+-- rewrite the top coordinate from AbsolutePosition (that caused the jump).
+local MIN_WIDTH, MIN_HEIGHT = 320, 250
+local EDGE = 14
+local resizing = false
+local resizeStart = nil
+local resizeSize = nil
+local resizePosition = nil
+local resizeDirection = nil
+
+local function makeResizeHandle(name, position, size, direction)
+	local handle = Instance.new("TextButton")
+	handle.Name = name
+	handle.Position = position
+	handle.Size = size
+	handle.BackgroundTransparency = 1
+	handle.BorderSizePixel = 0
+	handle.Text = ""
+	handle.AutoButtonColor = false
+	handle.Active = true
+	handle.ZIndex = 1000
+	handle.Parent = panel
+
+	handle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			resizing = true
+			resizeStart = input.Position
+			resizeSize = panel.Size
+			resizePosition = panel.Position
+			resizeDirection = direction
+		end
+	end)
+	return handle
+end
+
+makeResizeHandle("ResizeBottom", UDim2.new(0, EDGE, 1, -EDGE), UDim2.new(1, -EDGE * 2, 0, EDGE), "B")
+makeResizeHandle("ResizeBottomRight", UDim2.new(1, -EDGE, 1, -EDGE), UDim2.fromOffset(EDGE, EDGE), "BR")
+makeResizeHandle("ResizeBottomLeft", UDim2.new(0, 0, 1, -EDGE), UDim2.fromOffset(EDGE, EDGE), "BL")
+
+UserInputService.InputChanged:Connect(function(input)
+	if not resizing or not resizeStart or not resizeSize or not resizePosition then return end
+	if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+
+	local delta = input.Position - resizeStart
+	local width = resizeSize.X.Offset
+	local height = math.max(MIN_HEIGHT, resizeSize.Y.Offset + delta.Y)
+	local posX = resizePosition.X
+
+	if resizeDirection == "BR" then
+		width = math.max(MIN_WIDTH, resizeSize.X.Offset + delta.X)
+	elseif resizeDirection == "BL" then
+		width = math.max(MIN_WIDTH, resizeSize.X.Offset - delta.X)
+		-- Shift only X to keep the right edge fixed. Y is untouched.
+		posX = UDim.new(resizePosition.X.Scale, resizePosition.X.Offset + resizeSize.X.Offset - width)
+	end
+
+	panel.Size = UDim2.fromOffset(width, height)
+	-- Keep the exact original Y scale/offset; do not derive it from screen pixels.
+	panel.Position = UDim2.new(posX.Scale, posX.Offset, resizePosition.Y.Scale, resizePosition.Y.Offset)
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		resizing = false
+		resizeStart, resizeSize, resizePosition, resizeDirection = nil, nil, nil, nil
+	end
+end)
+
 local reopenGui = Instance.new("ScreenGui")
 reopenGui.Name = "C00lkiddReopen"
 reopenGui.ResetOnSpawn = false
@@ -227,25 +374,42 @@ reopenGui.IgnoreGuiInset = true
 reopenGui.Parent = playerGui
 
 local reopenBtn = Instance.new("TextButton")
-reopenBtn.Size = UDim2.new(0, 120, 0, 30)
+reopenBtn.Size = UDim2.new(0, 120, 0, 120)
 reopenBtn.Position = UDim2.new(0, 10, 0, 40)
 reopenBtn.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
 reopenBtn.BorderSizePixel = 0
-reopenBtn.Text = "OPEN PANEL"
-reopenBtn.TextColor3 = THEME.AccentBright
-reopenBtn.Font = Enum.Font.Code
-reopenBtn.TextSize = 13
+reopenBtn.Text = ""
 reopenBtn.Visible = false
 reopenBtn.Parent = reopenGui
 
 local roCorner = Instance.new("UICorner")
-roCorner.CornerRadius = UDim.new(0, 6)
+roCorner.CornerRadius = UDim.new(0, 8)
 roCorner.Parent = reopenBtn
 
 local roStroke = Instance.new("UIStroke")
 roStroke.Color = THEME.Accent
-roStroke.Thickness = 1
+roStroke.Thickness = 2
 roStroke.Parent = reopenBtn
+
+-- C00lkidd аватар (rbxassetid://178993745) на кнопке reopen
+local reopenAvatar = Instance.new("ImageLabel")
+reopenAvatar.Size = UDim2.fromScale(1, 1)
+reopenAvatar.Position = UDim2.fromScale(0, 0)
+reopenAvatar.BackgroundTransparency = 1
+reopenAvatar.BorderSizePixel = 0
+reopenAvatar.Image = "rbxassetid://178993745"
+reopenAvatar.ScaleType = Enum.ScaleType.Stretch
+reopenAvatar.Parent = reopenBtn
+
+local reopenLabel = Instance.new("TextLabel")
+reopenLabel.Size = UDim2.new(1, 0, 0, 20)
+reopenLabel.Position = UDim2.new(0, 0, 1, -22)
+reopenLabel.BackgroundTransparency = 1
+reopenLabel.Text = "OPEN PANEL"
+reopenLabel.TextColor3 = THEME.AccentBright
+reopenLabel.Font = Enum.Font.Code
+reopenLabel.TextSize = 13
+reopenLabel.Parent = reopenBtn
 
 local reopenDragging = false
 local reopenDragStart = nil
@@ -738,6 +902,10 @@ createButton(playerTab, "Infinite Jump", function(active)
 end)
 
 createButton(playerTab, "Noclip", function(active)
+	-- Пытаемся через remote (серверный noclip для всех)
+	if fireAllRemotes(active) then return end
+
+	-- Фолбэк: клиентский noclip (только для меня)
 	if active then
 		startFeature("Noclip", function(conns)
 			local conn = RunService.Stepped:Connect(function()
@@ -794,6 +962,10 @@ local visualsTab = createTab("Visuals")
 createLabel(visualsTab, "Sky Changer")
 
 createInput(visualsTab, "Sky Texture ID:", 178993745, "Apply", function(id)
+	-- Пытаемся через remote (серверный sky для всех)
+	if fireAllRemotes(id) then return end
+
+	-- Фолбэк: клиентский sky (только для меня)
 	local lighting = game:GetService("Lighting")
 	local sky = lighting:FindFirstChildOfClass("Sky")
 	if not sky then
@@ -820,6 +992,10 @@ end)
 createLabel(visualsTab, "Image / Decal Changer")
 
 createInput(visualsTab, "Image ID:", 178993745, "Apply", function(id)
+	-- Пытаемся через remote (серверные декали для всех)
+	if fireAllRemotes(id) then return end
+
+	-- Фолбэк: клиентские декали (только для меня)
 	local faces = {
 		Enum.NormalId.Front,
 		Enum.NormalId.Back,
@@ -1122,24 +1298,100 @@ local aimbotTab = createTab("AimBot")
 createLabel(aimbotTab, "AimBot Settings")
 
 local aimbotEnabled = false
+local aimbotMode = "Auto"
 local aimbotTarget = nil
 local aimbotBodyPart = "Torso"
 local aimbotRange = 100
+local aimbotFov = 150
+local aimbotSmoothness = 0.3
+
+local fovGui = Instance.new("ScreenGui")
+fovGui.Name = "AimbotFOV"
+fovGui.ResetOnSpawn = false
+fovGui.IgnoreGuiInset = true
+fovGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+fovGui.Parent = playerGui
+
+local fovCircle = Instance.new("Frame")
+fovCircle.Size = UDim2.fromOffset(aimbotFov * 2, aimbotFov * 2)
+fovCircle.Position = UDim2.new(0.5, -aimbotFov, 0.5, -aimbotFov)
+fovCircle.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+fovCircle.BackgroundTransparency = 1
+fovCircle.BorderSizePixel = 0
+fovCircle.Visible = false
+fovCircle.Parent = fovGui
+
+local fovCorner = Instance.new("UICorner")
+fovCorner.CornerRadius = UDim.new(1, 0)
+fovCorner.Parent = fovCircle
+
+local fovStroke = Instance.new("UIStroke")
+fovStroke.Color = Color3.fromRGB(255, 50, 50)
+fovStroke.Thickness = 2
+fovStroke.Transparency = 0.3
+fovStroke.Parent = fovCircle
 
 -- Player filter system
 local playerFilterEnabled = false
-local selectedPlayers = {} -- set: [player] = true
+local selectedPlayers = {}
 
 local function isPlayerSelected(p)
 	if not playerFilterEnabled then return true end
 	return selectedPlayers[p] == true
 end
 
+createLabel(aimbotTab, "Aim Mode")
+
+local modeButtons = {}
+
+local function createModeButton(text, mode)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, 0, 0, 30)
+	btn.BackgroundColor3 = (mode == aimbotMode) and THEME.ButtonActive or THEME.ButtonBg
+	btn.BorderSizePixel = 0
+	btn.Text = text
+	btn.TextColor3 = (mode == aimbotMode) and THEME.AccentBright or THEME.Text
+	btn.Font = Enum.Font.Code
+	btn.TextSize = 14
+	btn.Parent = aimbotTab
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = btn
+
+	modeButtons[mode] = btn
+
+	btn.MouseButton1Click:Connect(function()
+		aimbotMode = mode
+		for _, b in pairs(modeButtons) do
+			b.BackgroundColor3 = THEME.ButtonBg
+			b.TextColor3 = THEME.Text
+		end
+		btn.BackgroundColor3 = THEME.ButtonActive
+		btn.TextColor3 = THEME.AccentBright
+	end)
+
+	btn.MouseEnter:Connect(function()
+		if aimbotMode ~= mode then
+			btn.BackgroundColor3 = THEME.ButtonHover
+		end
+	end)
+	btn.MouseLeave:Connect(function()
+		if aimbotMode ~= mode then
+			btn.BackgroundColor3 = THEME.ButtonBg
+		end
+	end)
+end
+
+createModeButton("Auto (Locks nearest player)", "Auto")
+createModeButton("Assist (Helps when aiming near)", "Assist")
+
 createLabel(aimbotTab, "Target Body Part")
 
 local partButtons = {}
 
 local function getTargetPart(character)
+	if not character then return nil end
 	if aimbotBodyPart == "Head" then
 		return character:FindFirstChild("Head")
 	elseif aimbotBodyPart == "Torso" then
@@ -1147,6 +1399,7 @@ local function getTargetPart(character)
 	elseif aimbotBodyPart == "Legs" then
 		return character:FindFirstChild("Left Leg") or character:FindFirstChild("Right Leg") or character:FindFirstChild("LeftLeg") or character:FindFirstChild("RightLeg")
 	end
+	return character:FindFirstChild("HumanoidRootPart")
 end
 
 local function createPartButton(text, partName)
@@ -1168,7 +1421,7 @@ local function createPartButton(text, partName)
 
 	btn.MouseButton1Click:Connect(function()
 		aimbotBodyPart = partName
-		for name, b in pairs(partButtons) do
+		for _, b in pairs(partButtons) do
 			b.BackgroundColor3 = THEME.ButtonBg
 			b.TextColor3 = THEME.Text
 		end
@@ -1196,10 +1449,21 @@ createSliderWithInput(aimbotTab, "Aimbot Range", 10, 1000, 100, function(value)
 	aimbotRange = value
 end)
 
+createSliderWithInput(aimbotTab, "FOV Radius (Assist)", 20, 500, 150, function(value)
+	aimbotFov = value
+	fovCircle.Size = UDim2.fromOffset(aimbotFov * 2, aimbotFov * 2)
+	fovCircle.Position = UDim2.new(0.5, -aimbotFov, 0.5, -aimbotFov)
+end)
+
+createSliderWithInput(aimbotTab, "Smoothness", 0, 100, 30, function(value)
+	aimbotSmoothness = value / 100
+end)
+
 createLabel(aimbotTab, "AimBot Controls")
 
 createButton(aimbotTab, "Enable AimBot", function(active)
 	aimbotEnabled = active
+	fovCircle.Visible = active
 	if active then
 		startFeature("AimBot", function(conns)
 			local camera = workspace.CurrentCamera
@@ -1210,21 +1474,30 @@ createButton(aimbotTab, "Enable AimBot", function(active)
 				if not myChar then return end
 				local myHrp = myChar:FindFirstChild("HumanoidRootPart")
 				if not myHrp then return end
+
+				local mousePos = UserInputService:GetMouseLocation()
 				local closestPlayer = nil
-					local closestDist = math.huge
-					for _, p in pairs(Players:GetPlayers()) do
-						if p ~= player and p.Character and isPlayerSelected(p) then
-							local hum = p.Character:FindFirstChildOfClass("Humanoid")
-							if hum and hum.Health > 0 then
-								local targetPart = getTargetPart(p.Character)
-								if targetPart then
-									local dist3D = (targetPart.Position - myHrp.Position).Magnitude
-									if dist3D <= aimbotRange then
+				local closestScore = math.huge
+
+				for _, p in pairs(Players:GetPlayers()) do
+					if p ~= player and p.Character and isPlayerSelected(p) then
+						local hum = p.Character:FindFirstChildOfClass("Humanoid")
+						if hum and hum.Health > 0 then
+							local targetPart = getTargetPart(p.Character)
+							if targetPart then
+								local dist3D = (targetPart.Position - myHrp.Position).Magnitude
+								if dist3D <= aimbotRange then
+									if aimbotMode == "Auto" then
+										if dist3D < closestScore then
+											closestScore = dist3D
+											closestPlayer = p
+										end
+									else
 										local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
 										if onScreen then
-											local dist = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
-											if dist < closestDist then
-												closestDist = dist
+											local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+											if screenDist <= aimbotFov and screenDist < closestScore then
+												closestScore = screenDist
 												closestPlayer = p
 											end
 										end
@@ -1233,18 +1506,25 @@ createButton(aimbotTab, "Enable AimBot", function(active)
 							end
 						end
 					end
-					if closestPlayer and closestPlayer.Character then
-						local targetPart = getTargetPart(closestPlayer.Character)
-						if targetPart then
-							local targetPos = targetPart.Position
-							local newLook = (targetPos - camera.CFrame.Position).Unit
-							camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + newLook)
-							aimbotTarget = closestPlayer
+				end
+
+				if closestPlayer and closestPlayer.Character then
+					local targetPart = getTargetPart(closestPlayer.Character)
+					if targetPart then
+						local targetPos = targetPart.Position
+						local camPos = camera.CFrame.Position
+						local targetLook = CFrame.new(camPos, targetPos)
+						if aimbotSmoothness <= 0 then
+							camera.CFrame = targetLook
+						else
+							camera.CFrame = camera.CFrame:Lerp(targetLook, 1 - aimbotSmoothness)
 						end
-					else
-						aimbotTarget = nil
+						aimbotTarget = closestPlayer
 					end
-				end)
+				else
+					aimbotTarget = nil
+				end
+			end)
 			table.insert(conns, renderConn)
 		end)
 	else
@@ -1256,26 +1536,33 @@ end)
 createButton(aimbotTab, "Show Target ESP", function(active)
 	if active then
 		startFeature("AimbotESP", function(conns)
-			while true do
-				task.wait(0.1)
+			local currentHL = nil
+			local conn
+			conn = RunService.RenderStepped:Connect(function()
+				if currentHL and (not aimbotTarget or not aimbotTarget.Character or currentHL.Parent ~= aimbotTarget.Character) then
+					currentHL:Destroy()
+					currentHL = nil
+				end
 				if aimbotTarget and aimbotTarget.Character then
-					local existing = aimbotTarget.Character:FindFirstChild("AimbotTargetHL")
-					if not existing then
-						local hl = Instance.new("Highlight")
-						hl.Name = "AimbotTargetHL"
-						hl.FillColor = Color3.fromRGB(0, 255, 0)
-						hl.OutlineColor = Color3.fromRGB(0, 0, 0)
-						hl.FillTransparency = 0.3
-						hl.Parent = aimbotTarget.Character
-						task.delay(0.2, function()
-							hl:Destroy()
-						end)
+					if not currentHL then
+						currentHL = Instance.new("Highlight")
+						currentHL.Name = "AimbotTargetHL"
+						currentHL.FillColor = Color3.fromRGB(0, 255, 0)
+						currentHL.OutlineColor = Color3.fromRGB(0, 0, 0)
+						currentHL.FillTransparency = 0.3
+						currentHL.Parent = aimbotTarget.Character
 					end
 				end
-			end
+			end)
+			table.insert(conns, conn)
 		end)
 	else
 		stopFeature("AimbotESP")
+		for _, v in pairs(workspace:GetDescendants()) do
+			if v:IsA("Highlight") and v.Name == "AimbotTargetHL" then
+				v:Destroy()
+			end
+		end
 	end
 end)
 
@@ -1438,23 +1725,29 @@ createButton(serverTab, "FPS Boost", function(active)
 	end
 end)
 
-createButton(serverTab, "Explode All Players", function(active)
-	for _, p in pairs(Players:GetPlayers()) do
-		local char = p.Character
-		if char then
-			local hrp = char:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				local explosion = Instance.new("Explosion")
-				explosion.Position = hrp.Position
-				explosion.BlastRadius = 10
-				explosion.BlastPressure = 500000
-				explosion.Parent = workspace
+createButton(playersListTab, "Explode All Players", function(active)
+	-- Пытаемся через remotes (серверный эффект для всех)
+	if not fireAllRemotes("explode") then
+		if not fireAllRemotes("all") then
+			-- Фолбэк: клиентский взрыв (виден только мне)
+			for _, p in pairs(Players:GetPlayers()) do
+				local char = p.Character
+				if char then
+					local hrp = char:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						local explosion = Instance.new("Explosion")
+						explosion.Position = hrp.Position
+						explosion.BlastRadius = 10
+						explosion.BlastPressure = 500000
+						explosion.Parent = workspace
+					end
+				end
 			end
 		end
 	end
 end)
 
-createButton(serverTab, "Fling All", function(active)
+createButton(playersListTab, "Fling All", function(active)
 	if active then
 		startFeature("FlingAll", function(conns)
 			local myChar = player.Character
@@ -1560,7 +1853,7 @@ createButton(serverTab, "Laugh", function(active)
 	end)
 end)
 
-createButton(serverTab, "Anti-AFK", function(active)
+createButton(playerTab, "Anti-AFK", function(active)
 	if active then
 		startFeature("AntiAFK", function()
 			while true do
@@ -1579,119 +1872,10 @@ createButton(serverTab, "Anti-AFK", function(active)
 	end
 end)
 
-createLabel(serverTab, "Top Text Display")
-
-local topTextGui = Instance.new("ScreenGui")
-topTextGui.Name = "C00lkiddTopText"
-topTextGui.ResetOnSpawn = false
-topTextGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-topTextGui.IgnoreGuiInset = true
-topTextGui.Parent = playerGui
-
-local topTextLabel = Instance.new("TextLabel")
-topTextLabel.Size = UDim2.new(1, 0, 0, 40)
-topTextLabel.Position = UDim2.new(0, 0, 0, 35)
-topTextLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-topTextLabel.BackgroundTransparency = 0.3
-topTextLabel.Text = ""
-topTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-topTextLabel.Font = Enum.Font.Code
-topTextLabel.TextSize = 24
-topTextLabel.TextWrapped = true
-topTextLabel.Visible = false
-topTextLabel.Parent = topTextGui
-
-local textInputBox = Instance.new("TextBox")
-textInputBox.Size = UDim2.new(1, 0, 0, 80)
-textInputBox.BackgroundColor3 = THEME.ButtonBg
-textInputBox.BorderSizePixel = 0
-textInputBox.Text = ""
-textInputBox.TextColor3 = THEME.Text
-textInputBox.Font = Enum.Font.Code
-textInputBox.TextSize = 13
-textInputBox.MultiLine = true
-textInputBox.PlaceholderText = "Type text to show at top..."
-textInputBox.PlaceholderColor3 = THEME.TextDim
-textInputBox.ClearTextOnFocus = false
-textInputBox.TextWrapped = true
-textInputBox.Parent = serverTab
-
-local textCorner = Instance.new("UICorner")
-textCorner.CornerRadius = UDim.new(0, 6)
-textCorner.Parent = textInputBox
-
-local showTextBtn = Instance.new("TextButton")
-showTextBtn.Size = UDim2.new(1, 0, 0, 34)
-showTextBtn.BackgroundColor3 = THEME.ButtonBg
-showTextBtn.BorderSizePixel = 0
-showTextBtn.Text = "Show Text"
-showTextBtn.TextColor3 = THEME.AccentBright
-showTextBtn.Font = Enum.Font.Code
-showTextBtn.TextSize = 14
-showTextBtn.Parent = serverTab
-
-local showCorner = Instance.new("UICorner")
-showCorner.CornerRadius = UDim.new(0, 6)
-showCorner.Parent = showTextBtn
-
-showTextBtn.MouseEnter:Connect(function()
-	showTextBtn.BackgroundColor3 = THEME.ButtonHover
-end)
-showTextBtn.MouseLeave:Connect(function()
-	showTextBtn.BackgroundColor3 = THEME.ButtonBg
-end)
-
-showTextBtn.MouseButton1Click:Connect(function()
-	local txt = textInputBox.Text
-	if txt and #txt > 0 then
-		topTextLabel.Text = txt
-		topTextLabel.Visible = true
-	else
-		topTextLabel.Visible = false
-	end
-end)
-
-textInputBox.FocusLost:Connect(function(enterPressed)
-	if enterPressed then
-		local txt = textInputBox.Text
-		if txt and #txt > 0 then
-			topTextLabel.Text = txt
-			topTextLabel.Visible = true
-		else
-			topTextLabel.Visible = false
-		end
-	end
-end)
-
-local hideTextBtn = Instance.new("TextButton")
-hideTextBtn.Size = UDim2.new(1, 0, 0, 34)
-hideTextBtn.BackgroundColor3 = THEME.ButtonBg
-hideTextBtn.BorderSizePixel = 0
-hideTextBtn.Text = "Hide Text"
-hideTextBtn.TextColor3 = THEME.AccentBright
-hideTextBtn.Font = Enum.Font.Code
-hideTextBtn.TextSize = 14
-hideTextBtn.Parent = serverTab
-
-local hideCorner = Instance.new("UICorner")
-hideCorner.CornerRadius = UDim.new(0, 6)
-hideCorner.Parent = hideTextBtn
-
-hideTextBtn.MouseEnter:Connect(function()
-	hideTextBtn.BackgroundColor3 = THEME.ButtonHover
-end)
-hideTextBtn.MouseLeave:Connect(function()
-	hideTextBtn.BackgroundColor3 = THEME.ButtonBg
-end)
-
-hideTextBtn.MouseButton1Click:Connect(function()
-	topTextLabel.Visible = false
-end)
-
 -- Settings tab
 local settingsTab = createTab("Settings")
 
-createLabel(settingsTab, "UI Settings")
+createLabel(settingsTab, "Made by kaban15083 and Lunaxxux1507 !")
 
 createButton(settingsTab, "Hide Top Banner", function(active)
 	if active then
@@ -1701,13 +1885,7 @@ createButton(settingsTab, "Hide Top Banner", function(active)
 	end
 end)
 
-createButton(settingsTab, "Hide Top Text", function(active)
-	if active then
-		topTextGui.Enabled = false
-	else
-		topTextGui.Enabled = true
-	end
-end)
+
 
 createButton(settingsTab, "Unload Script", function(active)
 	for name, _ in pairs(featureData) do
@@ -1717,7 +1895,6 @@ createButton(settingsTab, "Unload Script", function(active)
 	screenGui:Destroy()
 	bannerGui:Destroy()
 	reopenGui:Destroy()
-	topTextGui:Destroy()
 end)
 
 tabs["Player"].button.TextColor3 = THEME.AccentBright
@@ -1731,4 +1908,4 @@ TweenService:Create(panel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.Easing
 	Size = UDim2.new(0, 420, 0, 320)
 }):Play()
 task.wait(0.3)
-panel.ClipsDescendants = false
+panel.ClipsDescendants = false	
