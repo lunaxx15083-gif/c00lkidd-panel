@@ -2,13 +2,9 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-
--- ===== АВТО-СКАН REMOTES =====
 local foundRemotes = {}
-
 local function scanRemotes()
 	table.clear(foundRemotes)
 	for _, obj in game:GetDescendants() do
@@ -19,42 +15,36 @@ local function scanRemotes()
 	end
 	print("[C00lkidd Scan] Всего remotes: " .. #foundRemotes)
 end
-
 task.spawn(function()
 	scanRemotes()
 end)
-
 game.DescendantAdded:Connect(function(obj)
 	if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
 		table.insert(foundRemotes, obj)
 		print("[C00lkidd Scan] Новый remote:", obj.ClassName, obj:GetFullName())
 	end
 end)
-
--- Стреляет через ВСЕ найденные remotes (любое название)
 local function fireAllRemotes(...)
 	if #foundRemotes == 0 then return false end
+	local args = {...}
 	for _, remote in pairs(foundRemotes) do
 		pcall(function()
 			if remote:IsA("RemoteEvent") then
-				remote:FireServer(...)
+				remote:FireServer(table.unpack(args))
 			elseif remote:IsA("RemoteFunction") then
-				remote:InvokeServer(...)
+				remote:InvokeServer(table.unpack(args))
 			end
 		end)
 	end
 	return true
 end
-
 local featureData = {}
-
 local function startFeature(name, func)
 	if featureData[name] then return end
 	local data = {connections = {}}
 	featureData[name] = data
 	data.thread = task.spawn(func, data.connections)
 end
-
 local function stopFeature(name)
 	local data = featureData[name]
 	if not data then return end
@@ -68,7 +58,6 @@ local function stopFeature(name)
 	end
 	featureData[name] = nil
 end
-
 local THEME = {
 	Background = Color3.fromRGB(10, 10, 12),
 	TopBar = Color3.fromRGB(20, 0, 0),
@@ -82,21 +71,18 @@ local THEME = {
 	SectionBg = Color3.fromRGB(15, 15, 18),
 	Border = Color3.fromRGB(60, 0, 0),
 }
-
 local oldBanner = playerGui:FindFirstChild("C00lkiddBanner")
 if oldBanner then oldBanner:Destroy() end
 local oldTopText = playerGui:FindFirstChild("C00lkiddTopText")
 if oldTopText then oldTopText:Destroy() end
 local old = playerGui:FindFirstChild("C00lkiddPanel")
 if old then old:Destroy() end
-
 local bannerGui = Instance.new("ScreenGui")
 bannerGui.Name = "C00lkiddBanner"
 bannerGui.ResetOnSpawn = false
 bannerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 bannerGui.IgnoreGuiInset = true
 bannerGui.Parent = playerGui
-
 local banner = Instance.new("TextLabel")
 banner.Name = "BannerText"
 banner.Size = UDim2.new(1, 0, 0, 35)
@@ -109,7 +95,6 @@ banner.TextSize = 20
 banner.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 banner.TextStrokeTransparency = 0.3
 banner.Parent = bannerGui
-
 local removeBannerBtn = Instance.new("TextButton")
 removeBannerBtn.Size = UDim2.new(0, 80, 0, 22)
 removeBannerBtn.Position = UDim2.new(1, -85, 0.5, -11)
@@ -120,22 +105,18 @@ removeBannerBtn.TextColor3 = THEME.AccentBright
 removeBannerBtn.Font = Enum.Font.Code
 removeBannerBtn.TextSize = 12
 removeBannerBtn.Parent = banner
-
 local rbCorner = Instance.new("UICorner")
 rbCorner.CornerRadius = UDim.new(0, 4)
 rbCorner.Parent = removeBannerBtn
-
 removeBannerBtn.MouseButton1Click:Connect(function()
 	bannerGui:Destroy()
 end)
-
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "C00lkiddPanel"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
-
 local panel = Instance.new("Frame")
 panel.Name = "MainPanel"
 panel.Size = UDim2.new(0, 420, 0, 320)
@@ -144,34 +125,28 @@ panel.BackgroundColor3 = THEME.Background
 panel.BorderSizePixel = 0
 panel.ClipsDescendants = false
 panel.Parent = screenGui
-
 local panelCorner = Instance.new("UICorner")
 panelCorner.CornerRadius = UDim.new(0, 8)
 panelCorner.Parent = panel
-
 local panelStroke = Instance.new("UIStroke")
 panelStroke.Color = THEME.Accent
 panelStroke.Thickness = 2
 panelStroke.Parent = panel
-
 local topBar = Instance.new("Frame")
 topBar.Name = "TopBar"
 topBar.Size = UDim2.new(1, 0, 0, 38)
 topBar.BackgroundColor3 = THEME.TopBar
 topBar.BorderSizePixel = 0
 topBar.Parent = panel
-
 local topCorner = Instance.new("UICorner")
 topCorner.CornerRadius = UDim.new(0, 8)
 topCorner.Parent = topBar
-
 local topBarFill = Instance.new("Frame")
 topBarFill.Size = UDim2.new(1, 0, 0, 10)
 topBarFill.Position = UDim2.new(0, 0, 1, -10)
 topBarFill.BackgroundColor3 = THEME.TopBar
 topBarFill.BorderSizePixel = 0
 topBarFill.Parent = topBar
-
 local title = Instance.new("TextLabel")
 title.Name = "Title"
 title.Size = UDim2.new(1, -130, 1, 0)
@@ -183,7 +158,6 @@ title.Font = Enum.Font.Code
 title.TextSize = 18
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = topBar
-
 local closeBtn = Instance.new("TextButton")
 closeBtn.Name = "Close"
 closeBtn.Size = UDim2.new(0, 28, 0, 28)
@@ -195,12 +169,9 @@ closeBtn.TextColor3 = THEME.AccentBright
 closeBtn.Font = Enum.Font.Code
 closeBtn.TextSize = 14
 closeBtn.Parent = topBar
-
 local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 6)
 closeCorner.Parent = closeBtn
-
--- Fullscreen toggle (the old +/- size buttons are replaced by one fullscreen button)
 local biggerBtn = Instance.new("TextButton")
 biggerBtn.Name = "Fullscreen"
 biggerBtn.Size = UDim2.new(0, 24, 0, 24)
@@ -215,7 +186,6 @@ biggerBtn.Parent = topBar
 local fsCorner = Instance.new("UICorner")
 fsCorner.CornerRadius = UDim.new(0, 5)
 fsCorner.Parent = biggerBtn
-
 local isFullscreen = false
 local previousSize, previousPosition
 biggerBtn.MouseButton1Click:Connect(function()
@@ -235,9 +205,6 @@ biggerBtn.MouseButton1Click:Connect(function()
 		isFullscreen = false
 	end
 end)
-
--- C00lkidd avatar убран с панели (был баганый) — теперь только на кнопке reopen
-
 local tabContainer = Instance.new("ScrollingFrame")
 tabContainer.Name = "Tabs"
 tabContainer.Size = UDim2.new(0, 110, 1, -38)
@@ -251,27 +218,22 @@ tabContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
 tabContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 tabContainer.ClipsDescendants = true
 tabContainer.Parent = panel
-
 local tabCorner = Instance.new("UICorner")
 tabCorner.CornerRadius = UDim.new(0, 8)
 tabCorner.Parent = tabContainer
-
 local tabList = Instance.new("UIListLayout")
 tabList.Padding = UDim.new(0, 4)
 tabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 tabList.Parent = tabContainer
-
 local contentArea = Instance.new("Frame")
 contentArea.Name = "Content"
 contentArea.Size = UDim2.new(1, -120, 1, -46)
 contentArea.Position = UDim2.new(0, 115, 0, 42)
 contentArea.BackgroundTransparency = 1
 contentArea.Parent = panel
-
 local dragging = false
 local dragStart = nil
 local startPos = nil
-
 topBar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
@@ -284,7 +246,6 @@ topBar.InputBegan:Connect(function(input)
 		end)
 	end
 end)
-
 topBar.InputChanged:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 		if dragging and dragStart and startPos then
@@ -296,10 +257,6 @@ topBar.InputChanged:Connect(function(input)
 		end
 	end
 end)
-
--- Resize only from the bottom edge and bottom corners.
--- Preserve the panel's original Y Position UDim exactly: resizing must never
--- rewrite the top coordinate from AbsolutePosition (that caused the jump).
 local MIN_WIDTH, MIN_HEIGHT = 320, 250
 local EDGE = 14
 local resizing = false
@@ -307,7 +264,6 @@ local resizeStart = nil
 local resizeSize = nil
 local resizePosition = nil
 local resizeDirection = nil
-
 local function makeResizeHandle(name, position, size, direction)
 	local handle = Instance.new("TextButton")
 	handle.Name = name
@@ -320,7 +276,6 @@ local function makeResizeHandle(name, position, size, direction)
 	handle.Active = true
 	handle.ZIndex = 1000
 	handle.Parent = panel
-
 	handle.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			resizing = true
@@ -332,47 +287,37 @@ local function makeResizeHandle(name, position, size, direction)
 	end)
 	return handle
 end
-
 makeResizeHandle("ResizeBottom", UDim2.new(0, EDGE, 1, -EDGE), UDim2.new(1, -EDGE * 2, 0, EDGE), "B")
 makeResizeHandle("ResizeBottomRight", UDim2.new(1, -EDGE, 1, -EDGE), UDim2.fromOffset(EDGE, EDGE), "BR")
 makeResizeHandle("ResizeBottomLeft", UDim2.new(0, 0, 1, -EDGE), UDim2.fromOffset(EDGE, EDGE), "BL")
-
 UserInputService.InputChanged:Connect(function(input)
 	if not resizing or not resizeStart or not resizeSize or not resizePosition then return end
 	if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
-
 	local delta = input.Position - resizeStart
 	local width = resizeSize.X.Offset
 	local height = math.max(MIN_HEIGHT, resizeSize.Y.Offset + delta.Y)
 	local posX = resizePosition.X
-
 	if resizeDirection == "BR" then
 		width = math.max(MIN_WIDTH, resizeSize.X.Offset + delta.X)
 	elseif resizeDirection == "BL" then
 		width = math.max(MIN_WIDTH, resizeSize.X.Offset - delta.X)
-		-- Shift only X to keep the right edge fixed. Y is untouched.
 		posX = UDim.new(resizePosition.X.Scale, resizePosition.X.Offset + resizeSize.X.Offset - width)
 	end
-
 	panel.Size = UDim2.fromOffset(width, height)
-	-- Keep the exact original Y scale/offset; do not derive it from screen pixels.
 	panel.Position = UDim2.new(posX.Scale, posX.Offset, resizePosition.Y.Scale, resizePosition.Y.Offset)
 end)
-
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		resizing = false
 		resizeStart, resizeSize, resizePosition, resizeDirection = nil, nil, nil, nil
 	end
 end)
-
 local reopenGui = Instance.new("ScreenGui")
 reopenGui.Name = "C00lkiddReopen"
 reopenGui.ResetOnSpawn = false
 reopenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 reopenGui.IgnoreGuiInset = true
 reopenGui.Parent = playerGui
-
 local reopenBtn = Instance.new("TextButton")
 reopenBtn.Size = UDim2.new(0, 120, 0, 120)
 reopenBtn.Position = UDim2.new(0, 10, 0, 40)
@@ -381,17 +326,13 @@ reopenBtn.BorderSizePixel = 0
 reopenBtn.Text = ""
 reopenBtn.Visible = false
 reopenBtn.Parent = reopenGui
-
 local roCorner = Instance.new("UICorner")
 roCorner.CornerRadius = UDim.new(0, 8)
 roCorner.Parent = reopenBtn
-
 local roStroke = Instance.new("UIStroke")
 roStroke.Color = THEME.Accent
 roStroke.Thickness = 2
 roStroke.Parent = reopenBtn
-
--- C00lkidd аватар (rbxassetid://178993745) на кнопке reopen
 local reopenAvatar = Instance.new("ImageLabel")
 reopenAvatar.Size = UDim2.fromScale(1, 1)
 reopenAvatar.Position = UDim2.fromScale(0, 0)
@@ -400,7 +341,6 @@ reopenAvatar.BorderSizePixel = 0
 reopenAvatar.Image = "rbxassetid://178993745"
 reopenAvatar.ScaleType = Enum.ScaleType.Stretch
 reopenAvatar.Parent = reopenBtn
-
 local reopenLabel = Instance.new("TextLabel")
 reopenLabel.Size = UDim2.new(1, 0, 0, 20)
 reopenLabel.Position = UDim2.new(0, 0, 1, -22)
@@ -410,11 +350,9 @@ reopenLabel.TextColor3 = THEME.AccentBright
 reopenLabel.Font = Enum.Font.Code
 reopenLabel.TextSize = 13
 reopenLabel.Parent = reopenBtn
-
 local reopenDragging = false
 local reopenDragStart = nil
 local reopenStartPos = nil
-
 reopenBtn.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		reopenDragging = true
@@ -427,7 +365,6 @@ reopenBtn.InputBegan:Connect(function(input)
 		end)
 	end
 end)
-
 reopenBtn.InputChanged:Connect(function(input)
 	if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and reopenDragging and reopenDragStart and reopenStartPos then
 		local delta = input.Position - reopenDragStart
@@ -437,27 +374,22 @@ reopenBtn.InputChanged:Connect(function(input)
 		)
 	end
 end)
-
 reopenBtn.MouseButton1Click:Connect(function()
 	screenGui.Enabled = true
 	reopenBtn.Visible = false
 end)
-
 closeBtn.MouseButton1Click:Connect(function()
 	screenGui.Enabled = false
 	reopenBtn.Visible = true
 end)
-
 closeBtn.MouseEnter:Connect(function()
 	closeBtn.BackgroundColor3 = THEME.ButtonActive
 end)
 closeBtn.MouseLeave:Connect(function()
 	closeBtn.BackgroundColor3 = THEME.ButtonBg
 end)
-
 local tabs = {}
 local activeTab = nil
-
 local function createTab(name)
 	local tabBtn = Instance.new("TextButton")
 	tabBtn.Size = UDim2.new(1, -8, 0, 32)
@@ -468,11 +400,9 @@ local function createTab(name)
 	tabBtn.Font = Enum.Font.Code
 	tabBtn.TextSize = 14
 	tabBtn.Parent = tabContainer
-
 	local btnCorner = Instance.new("UICorner")
 	btnCorner.CornerRadius = UDim.new(0, 6)
 	btnCorner.Parent = tabBtn
-
 	local content = Instance.new("ScrollingFrame")
 	content.Size = UDim2.new(1, 0, 1, 0)
 	content.BackgroundTransparency = 1
@@ -483,11 +413,9 @@ local function createTab(name)
 	content.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	content.Visible = false
 	content.Parent = contentArea
-
 	local contentList = Instance.new("UIListLayout")
 	contentList.Padding = UDim.new(0, 6)
 	contentList.Parent = content
-
 	local function activate()
 		for _, t in pairs(tabs) do
 			t.button.TextColor3 = THEME.TextDim
@@ -499,7 +427,6 @@ local function createTab(name)
 		content.Visible = true
 		activeTab = name
 	end
-
 	tabBtn.MouseButton1Click:Connect(activate)
 	tabBtn.MouseEnter:Connect(function()
 		if activeTab ~= name then
@@ -511,11 +438,9 @@ local function createTab(name)
 			tabBtn.BackgroundColor3 = THEME.ButtonBg
 		end
 	end)
-
 	tabs[name] = { button = tabBtn, content = content }
 	return content
 end
-
 local function createButton(parent, text, callback)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(1, 0, 0, 34)
@@ -526,11 +451,9 @@ local function createButton(parent, text, callback)
 	btn.Font = Enum.Font.Code
 	btn.TextSize = 14
 	btn.Parent = parent
-
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 6)
 	corner.Parent = btn
-
 	local active = false
 	btn.MouseButton1Click:Connect(function()
 		active = not active
@@ -543,23 +466,19 @@ local function createButton(parent, text, callback)
 		end
 		if callback then callback(active) end
 	end)
-
 	btn.MouseEnter:Connect(function()
 		if not active then btn.BackgroundColor3 = THEME.ButtonHover end
 	end)
 	btn.MouseLeave:Connect(function()
 		if not active then btn.BackgroundColor3 = THEME.ButtonBg end
 	end)
-
 	return btn
 end
-
 local function createSlider(parent, text, min, max, default, callback)
 	local container = Instance.new("Frame")
 	container.Size = UDim2.new(1, 0, 0, 50)
 	container.BackgroundTransparency = 1
 	container.Parent = parent
-
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 0, 20)
 	label.BackgroundTransparency = 1
@@ -569,30 +488,24 @@ local function createSlider(parent, text, min, max, default, callback)
 	label.TextSize = 13
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = container
-
 	local sliderBg = Instance.new("Frame")
 	sliderBg.Size = UDim2.new(1, 0, 0, 20)
 	sliderBg.Position = UDim2.new(0, 0, 0, 24)
 	sliderBg.BackgroundColor3 = THEME.ButtonBg
 	sliderBg.BorderSizePixel = 0
 	sliderBg.Parent = container
-
 	local sliderCorner = Instance.new("UICorner")
 	sliderCorner.CornerRadius = UDim.new(0, 4)
 	sliderCorner.Parent = sliderBg
-
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
 	fill.BackgroundColor3 = THEME.Accent
 	fill.BorderSizePixel = 0
 	fill.Parent = sliderBg
-
 	local fillCorner = Instance.new("UICorner")
 	fillCorner.CornerRadius = UDim.new(0, 4)
 	fillCorner.Parent = fill
-
 	local dragging = false
-
 	local function update(inputPos)
 		local rel = math.clamp((inputPos - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
 		local value = math.floor(min + rel * (max - min) + 0.5)
@@ -600,7 +513,6 @@ local function createSlider(parent, text, min, max, default, callback)
 		label.Text = text .. ": " .. tostring(value)
 		if callback then callback(value) end
 	end
-
 	sliderBg.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
@@ -612,16 +524,13 @@ local function createSlider(parent, text, min, max, default, callback)
 			end)
 		end
 	end)
-
 	sliderBg.InputChanged:Connect(function(input)
 		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			update(input.Position.X)
 		end
 	end)
-
 	return container
 end
-
 local function createLabel(parent, text)
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, 0, 0, 24)
@@ -634,13 +543,11 @@ local function createLabel(parent, text)
 	lbl.Parent = parent
 	return lbl
 end
-
 local function createSliderWithInput(parent, text, min, max, default, callback)
 	local container = Instance.new("Frame")
 	container.Size = UDim2.new(1, 0, 0, 50)
 	container.BackgroundTransparency = 1
 	container.Parent = parent
-
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(0.7, 0, 0, 20)
 	label.BackgroundTransparency = 1
@@ -650,7 +557,6 @@ local function createSliderWithInput(parent, text, min, max, default, callback)
 	label.TextSize = 13
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = container
-
 	local inputBox = Instance.new("TextBox")
 	inputBox.Size = UDim2.new(0.25, 0, 0, 20)
 	inputBox.Position = UDim2.new(0.73, 0, 0, 0)
@@ -662,40 +568,32 @@ local function createSliderWithInput(parent, text, min, max, default, callback)
 	inputBox.TextSize = 13
 	inputBox.ClearTextOnFocus = false
 	inputBox.Parent = container
-
 	local inputCorner = Instance.new("UICorner")
 	inputCorner.CornerRadius = UDim.new(0, 4)
 	inputCorner.Parent = inputBox
-
 	local inputStroke = Instance.new("UIStroke")
 	inputStroke.Color = THEME.Accent
 	inputStroke.Thickness = 1
 	inputStroke.Transparency = 0.5
 	inputStroke.Parent = inputBox
-
 	local sliderBg = Instance.new("Frame")
 	sliderBg.Size = UDim2.new(1, 0, 0, 20)
 	sliderBg.Position = UDim2.new(0, 0, 0, 26)
 	sliderBg.BackgroundColor3 = THEME.ButtonBg
 	sliderBg.BorderSizePixel = 0
 	sliderBg.Parent = container
-
 	local sliderCorner = Instance.new("UICorner")
 	sliderCorner.CornerRadius = UDim.new(0, 4)
 	sliderCorner.Parent = sliderBg
-
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
 	fill.BackgroundColor3 = THEME.Accent
 	fill.BorderSizePixel = 0
 	fill.Parent = sliderBg
-
 	local fillCorner = Instance.new("UICorner")
 	fillCorner.CornerRadius = UDim.new(0, 4)
 	fillCorner.Parent = fill
-
 	local dragging = false
-
 	local function setValue(value)
 		value = math.clamp(value, min, max)
 		local rel = (value - min) / (max - min)
@@ -704,13 +602,11 @@ local function createSliderWithInput(parent, text, min, max, default, callback)
 		inputBox.Text = tostring(value)
 		if callback then callback(value) end
 	end
-
 	local function update(inputPos)
 		local rel = math.clamp((inputPos - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
 		local value = math.floor(min + rel * (max - min) + 0.5)
 		setValue(value)
 	end
-
 	sliderBg.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
@@ -722,13 +618,11 @@ local function createSliderWithInput(parent, text, min, max, default, callback)
 			end)
 		end
 	end)
-
 	sliderBg.InputChanged:Connect(function(input)
 		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			update(input.Position.X)
 		end
 	end)
-
 	inputBox.FocusLost:Connect(function(enterPressed)
 		local value = tonumber(inputBox.Text)
 		if value then
@@ -737,16 +631,13 @@ local function createSliderWithInput(parent, text, min, max, default, callback)
 			inputBox.Text = tostring(default)
 		end
 	end)
-
 	return container
 end
-
 local function createInput(parent, labelText, defaultId, buttonText, callback)
 	local container = Instance.new("Frame")
 	container.Size = UDim2.new(1, 0, 0, 60)
 	container.BackgroundTransparency = 1
 	container.Parent = parent
-
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, 0, 0, 18)
 	lbl.BackgroundTransparency = 1
@@ -756,7 +647,6 @@ local function createInput(parent, labelText, defaultId, buttonText, callback)
 	lbl.TextSize = 13
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.Parent = container
-
 	local inputBox = Instance.new("TextBox")
 	inputBox.Size = UDim2.new(0.6, 0, 0, 30)
 	inputBox.Position = UDim2.new(0, 0, 0, 22)
@@ -770,17 +660,14 @@ local function createInput(parent, labelText, defaultId, buttonText, callback)
 	inputBox.PlaceholderColor3 = THEME.TextDim
 	inputBox.ClearTextOnFocus = false
 	inputBox.Parent = container
-
 	local inputCorner = Instance.new("UICorner")
 	inputCorner.CornerRadius = UDim.new(0, 6)
 	inputCorner.Parent = inputBox
-
 	local inputStroke = Instance.new("UIStroke")
 	inputStroke.Color = THEME.Accent
 	inputStroke.Thickness = 1
 	inputStroke.Transparency = 0.5
 	inputStroke.Parent = inputBox
-
 	local applyBtn = Instance.new("TextButton")
 	applyBtn.Size = UDim2.new(0.35, 0, 0, 30)
 	applyBtn.Position = UDim2.new(0.63, 0, 0, 22)
@@ -791,25 +678,21 @@ local function createInput(parent, labelText, defaultId, buttonText, callback)
 	applyBtn.Font = Enum.Font.Code
 	applyBtn.TextSize = 13
 	applyBtn.Parent = container
-
 	local btnCorner = Instance.new("UICorner")
 	btnCorner.CornerRadius = UDim.new(0, 6)
 	btnCorner.Parent = applyBtn
-
 	applyBtn.MouseEnter:Connect(function()
 		applyBtn.BackgroundColor3 = THEME.ButtonHover
 	end)
 	applyBtn.MouseLeave:Connect(function()
 		applyBtn.BackgroundColor3 = THEME.ButtonBg
 	end)
-
 	applyBtn.MouseButton1Click:Connect(function()
 		local id = tonumber(inputBox.Text)
 		if id then
 			callback(id)
 		end
 	end)
-
 	inputBox.FocusLost:Connect(function(enterPressed)
 		if enterPressed then
 			local id = tonumber(inputBox.Text)
@@ -818,14 +701,10 @@ local function createInput(parent, labelText, defaultId, buttonText, callback)
 			end
 		end
 	end)
-
 	return container, inputBox
 end
-
 local playerTab = createTab("Player")
-
 createLabel(playerTab, "Player Options")
-
 createButton(playerTab, "WalkSpeed x2", function(active)
 	if active then
 		startFeature("WalkSpeedx2", function()
@@ -851,7 +730,6 @@ createButton(playerTab, "WalkSpeed x2", function(active)
 		end
 	end
 end)
-
 createButton(playerTab, "JumpPower x2", function(active)
 	if active then
 		startFeature("JumpPowerx2", function()
@@ -878,7 +756,6 @@ createButton(playerTab, "JumpPower x2", function(active)
 		end
 	end
 end)
-
 createButton(playerTab, "Infinite Jump", function(active)
 	if active then
 		startFeature("InfJump", function(conns)
@@ -900,12 +777,8 @@ createButton(playerTab, "Infinite Jump", function(active)
 		stopFeature("InfJump")
 	end
 end)
-
 createButton(playerTab, "Noclip", function(active)
-	-- Пытаемся через remote (серверный noclip для всех)
 	if fireAllRemotes(active) then return end
-
-	-- Фолбэк: клиентский noclip (только для меня)
 	if active then
 		startFeature("Noclip", function(conns)
 			local conn = RunService.Stepped:Connect(function()
@@ -935,7 +808,6 @@ createButton(playerTab, "Noclip", function(active)
 		end
 	end
 end)
-
 createSliderWithInput(playerTab, "WalkSpeed", 16, 200, 16, function(value)
 	local char = player.Character
 	if char then
@@ -945,7 +817,6 @@ createSliderWithInput(playerTab, "WalkSpeed", 16, 200, 16, function(value)
 		end
 	end
 end)
-
 createSliderWithInput(playerTab, "JumpPower", 50, 300, 50, function(value)
 	local char = player.Character
 	if char then
@@ -956,16 +827,10 @@ createSliderWithInput(playerTab, "JumpPower", 50, 300, 50, function(value)
 		end
 	end
 end)
-
 local visualsTab = createTab("Visuals")
-
 createLabel(visualsTab, "Sky Changer")
-
 createInput(visualsTab, "Sky Texture ID:", 178993745, "Apply", function(id)
-	-- Пытаемся через remote (серверный sky для всех)
 	if fireAllRemotes(id) then return end
-
-	-- Фолбэк: клиентский sky (только для меня)
 	local lighting = game:GetService("Lighting")
 	local sky = lighting:FindFirstChildOfClass("Sky")
 	if not sky then
@@ -980,7 +845,6 @@ createInput(visualsTab, "Sky Texture ID:", 178993745, "Apply", function(id)
 	sky.SkyboxUp = "rbxassetid://" .. id
 	sky.StarCount = 0
 end)
-
 createButton(visualsTab, "Reset Sky", function(active)
 	local lighting = game:GetService("Lighting")
 	local sky = lighting:FindFirstChildOfClass("Sky")
@@ -988,14 +852,9 @@ createButton(visualsTab, "Reset Sky", function(active)
 		sky:Destroy()
 	end
 end)
-
 createLabel(visualsTab, "Image / Decal Changer")
-
 createInput(visualsTab, "Image ID:", 178993745, "Apply", function(id)
-	-- Пытаемся через remote (серверные декали для всех)
 	if fireAllRemotes(id) then return end
-
-	-- Фолбэк: клиентские декали (только для меня)
 	local faces = {
 		Enum.NormalId.Front,
 		Enum.NormalId.Back,
@@ -1004,7 +863,6 @@ createInput(visualsTab, "Image ID:", 178993745, "Apply", function(id)
 		Enum.NormalId.Left,
 		Enum.NormalId.Right,
 	}
-
 	for _, v in pairs(workspace:GetDescendants()) do
 		if v:IsA("BasePart") then
 			for _, child in pairs(v:GetChildren()) do
@@ -1022,17 +880,13 @@ createInput(visualsTab, "Image ID:", 178993745, "Apply", function(id)
 		end
 	end
 end)
-
 createLabel(visualsTab, "Music Player")
-
 local currentSound = nil
-
-createInput(visualsTab, "Sound ID:", 178993745, "Play", function(id)
+createInput(visualsTab, "Sound ID:", 94635984925376, "Play", function(id)
 	if currentSound then
 		currentSound:Stop()
 		currentSound:Destroy()
 	end
-
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://" .. id
 	sound.Volume = 5
@@ -1041,7 +895,6 @@ createInput(visualsTab, "Sound ID:", 178993745, "Play", function(id)
 	sound:Play()
 	currentSound = sound
 end)
-
 createButton(visualsTab, "Random Music", function(active)
 	local musicIds = {
 		139063675026894,
@@ -1049,12 +902,10 @@ createButton(visualsTab, "Random Music", function(active)
 		115866242800115,
 	}
 	local randomId = musicIds[math.random(1, #musicIds)]
-
 	if currentSound then
 		currentSound:Stop()
 		currentSound:Destroy()
 	end
-
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://" .. randomId
 	sound.Volume = 1
@@ -1063,7 +914,6 @@ createButton(visualsTab, "Random Music", function(active)
 	sound:Play()
 	currentSound = sound
 end)
-
 createButton(visualsTab, "Stop Music", function(active)
 	if currentSound then
 		currentSound:Stop()
@@ -1071,20 +921,16 @@ createButton(visualsTab, "Stop Music", function(active)
 		currentSound = nil
 	end
 end)
-
 createSlider(visualsTab, "Volume", 0, 10, 5, function(value)
 	if currentSound then
 		currentSound.Volume = value / 10
 	end
 end)
-
--- ESP system
 local espObjects = {}
 local espNameObjects = {}
 local espEnabled = false
 local espColor = Color3.fromRGB(255, 50, 50)
 local espShowNames = false
-
 local function addESP(character)
 	if character == player.Character then return end
 	local existing = character:FindFirstChild("C00lkiddESP")
@@ -1098,7 +944,6 @@ local function addESP(character)
 	hl.Parent = character
 	espObjects[character] = hl
 end
-
 local function removeESP(character)
 	local hl = espObjects[character]
 	if hl then
@@ -1111,7 +956,6 @@ local function removeESP(character)
 		espNameObjects[character] = nil
 	end
 end
-
 local function clearAllESP()
 	for char, hl in pairs(espObjects) do
 		hl:Destroy()
@@ -1122,7 +966,6 @@ local function clearAllESP()
 	end
 	espNameObjects = {}
 end
-
 local function addESPName(character, p)
 	if character == player.Character then return end
 	local existing = espNameObjects[character]
@@ -1145,7 +988,6 @@ local function addESPName(character, p)
 	lbl.Parent = bg
 	espNameObjects[character] = bg
 end
-
 local function refreshESP()
 	for _, p in pairs(Players:GetPlayers()) do
 		if p ~= player and p.Character then
@@ -1156,12 +998,8 @@ local function refreshESP()
 		end
 	end
 end
-
--- ESP tab
 local espTab = createTab("ESP")
-
 createLabel(espTab, "ESP Settings")
-
 createButton(espTab, "Show Players (ESP)", function(active)
 	espEnabled = active
 	if active then
@@ -1191,7 +1029,6 @@ createButton(espTab, "Show Players (ESP)", function(active)
 		clearAllESP()
 	end
 end)
-
 createButton(espTab, "Show Names", function(active)
 	espShowNames = active
 	if active then
@@ -1207,26 +1044,21 @@ createButton(espTab, "Show Names", function(active)
 		espNameObjects = {}
 	end
 end)
-
--- Color picker popup
 local colorPickerFrame = Instance.new("Frame")
 colorPickerFrame.Size = UDim2.new(1, 0, 0, 80)
 colorPickerFrame.BackgroundColor3 = THEME.ButtonBg
 colorPickerFrame.BorderSizePixel = 0
 colorPickerFrame.Visible = false
 colorPickerFrame.Parent = espTab
-
 local cpCorner = Instance.new("UICorner")
 cpCorner.CornerRadius = UDim.new(0, 6)
 cpCorner.Parent = colorPickerFrame
-
 local cpList = Instance.new("UIListLayout")
 cpList.FillDirection = Enum.FillDirection.Horizontal
 cpList.Padding = UDim.new(0, 4)
 cpList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 cpList.VerticalAlignment = Enum.VerticalAlignment.Center
 cpList.Parent = colorPickerFrame
-
 local espColors = {
 	{ name = "Red",    color = Color3.fromRGB(255, 50, 50) },
 	{ name = "Green",  color = Color3.fromRGB(50, 255, 50) },
@@ -1237,7 +1069,6 @@ local espColors = {
 	{ name = "Orange", color = Color3.fromRGB(255, 165, 0) },
 	{ name = "White",  color = Color3.fromRGB(255, 255, 255) },
 }
-
 for _, c in ipairs(espColors) do
 	local cBtn = Instance.new("TextButton")
 	cBtn.Size = UDim2.new(0, 36, 0, 36)
@@ -1245,11 +1076,9 @@ for _, c in ipairs(espColors) do
 	cBtn.BorderSizePixel = 0
 	cBtn.Text = ""
 	cBtn.Parent = colorPickerFrame
-
 	local cCorner = Instance.new("UICorner")
 	cCorner.CornerRadius = UDim.new(0, 6)
 	cCorner.Parent = cBtn
-
 	cBtn.MouseButton1Click:Connect(function()
 		espColor = c.color
 		for _, hl in pairs(espObjects) do
@@ -1263,8 +1092,6 @@ for _, c in ipairs(espColors) do
 		end
 	end)
 end
-
--- Color picker toggle button
 local colorPickerBtn = Instance.new("TextButton")
 colorPickerBtn.Size = UDim2.new(1, 0, 0, 34)
 colorPickerBtn.BackgroundColor3 = THEME.ButtonBg
@@ -1274,29 +1101,22 @@ colorPickerBtn.TextColor3 = THEME.Text
 colorPickerBtn.Font = Enum.Font.Code
 colorPickerBtn.TextSize = 14
 colorPickerBtn.Parent = espTab
-
 local cpBtnCorner = Instance.new("UICorner")
 cpBtnCorner.CornerRadius = UDim.new(0, 6)
 cpBtnCorner.Parent = colorPickerBtn
-
 colorPickerBtn.MouseEnter:Connect(function()
 	colorPickerBtn.BackgroundColor3 = THEME.ButtonHover
 end)
 colorPickerBtn.MouseLeave:Connect(function()
 	colorPickerBtn.BackgroundColor3 = THEME.ButtonBg
 end)
-
 local cpVisible = false
 colorPickerBtn.MouseButton1Click:Connect(function()
 	cpVisible = not cpVisible
 	colorPickerFrame.Visible = cpVisible
 end)
-
--- AimBot tab
 local aimbotTab = createTab("AimBot")
-
 createLabel(aimbotTab, "AimBot Settings")
-
 local aimbotEnabled = false
 local aimbotMode = "Auto"
 local aimbotTarget = nil
@@ -1304,14 +1124,12 @@ local aimbotBodyPart = "Torso"
 local aimbotRange = 100
 local aimbotFov = 150
 local aimbotSmoothness = 0.3
-
 local fovGui = Instance.new("ScreenGui")
 fovGui.Name = "AimbotFOV"
 fovGui.ResetOnSpawn = false
 fovGui.IgnoreGuiInset = true
 fovGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 fovGui.Parent = playerGui
-
 local fovCircle = Instance.new("Frame")
 fovCircle.Size = UDim2.fromOffset(aimbotFov * 2, aimbotFov * 2)
 fovCircle.Position = UDim2.new(0.5, -aimbotFov, 0.5, -aimbotFov)
@@ -1320,30 +1138,22 @@ fovCircle.BackgroundTransparency = 1
 fovCircle.BorderSizePixel = 0
 fovCircle.Visible = false
 fovCircle.Parent = fovGui
-
 local fovCorner = Instance.new("UICorner")
 fovCorner.CornerRadius = UDim.new(1, 0)
 fovCorner.Parent = fovCircle
-
 local fovStroke = Instance.new("UIStroke")
 fovStroke.Color = Color3.fromRGB(255, 50, 50)
 fovStroke.Thickness = 2
 fovStroke.Transparency = 0.3
 fovStroke.Parent = fovCircle
-
--- Player filter system
 local playerFilterEnabled = false
 local selectedPlayers = {}
-
 local function isPlayerSelected(p)
 	if not playerFilterEnabled then return true end
 	return selectedPlayers[p] == true
 end
-
 createLabel(aimbotTab, "Aim Mode")
-
 local modeButtons = {}
-
 local function createModeButton(text, mode)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(1, 0, 0, 30)
@@ -1354,13 +1164,10 @@ local function createModeButton(text, mode)
 	btn.Font = Enum.Font.Code
 	btn.TextSize = 14
 	btn.Parent = aimbotTab
-
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 6)
 	corner.Parent = btn
-
 	modeButtons[mode] = btn
-
 	btn.MouseButton1Click:Connect(function()
 		aimbotMode = mode
 		for _, b in pairs(modeButtons) do
@@ -1370,7 +1177,6 @@ local function createModeButton(text, mode)
 		btn.BackgroundColor3 = THEME.ButtonActive
 		btn.TextColor3 = THEME.AccentBright
 	end)
-
 	btn.MouseEnter:Connect(function()
 		if aimbotMode ~= mode then
 			btn.BackgroundColor3 = THEME.ButtonHover
@@ -1382,14 +1188,10 @@ local function createModeButton(text, mode)
 		end
 	end)
 end
-
 createModeButton("Auto (Locks nearest player)", "Auto")
 createModeButton("Assist (Helps when aiming near)", "Assist")
-
 createLabel(aimbotTab, "Target Body Part")
-
 local partButtons = {}
-
 local function getTargetPart(character)
 	if not character then return nil end
 	if aimbotBodyPart == "Head" then
@@ -1401,7 +1203,6 @@ local function getTargetPart(character)
 	end
 	return character:FindFirstChild("HumanoidRootPart")
 end
-
 local function createPartButton(text, partName)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(1, 0, 0, 30)
@@ -1412,13 +1213,10 @@ local function createPartButton(text, partName)
 	btn.Font = Enum.Font.Code
 	btn.TextSize = 14
 	btn.Parent = aimbotTab
-
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 6)
 	corner.Parent = btn
-
 	partButtons[partName] = btn
-
 	btn.MouseButton1Click:Connect(function()
 		aimbotBodyPart = partName
 		for _, b in pairs(partButtons) do
@@ -1428,7 +1226,6 @@ local function createPartButton(text, partName)
 		btn.BackgroundColor3 = THEME.ButtonActive
 		btn.TextColor3 = THEME.AccentBright
 	end)
-
 	btn.MouseEnter:Connect(function()
 		if aimbotBodyPart ~= partName then
 			btn.BackgroundColor3 = THEME.ButtonHover
@@ -1440,27 +1237,21 @@ local function createPartButton(text, partName)
 		end
 	end)
 end
-
 createPartButton("Head", "Head")
 createPartButton("Torso", "Torso")
 createPartButton("Legs", "Legs")
-
 createSliderWithInput(aimbotTab, "Aimbot Range", 10, 1000, 100, function(value)
 	aimbotRange = value
 end)
-
 createSliderWithInput(aimbotTab, "FOV Radius (Assist)", 20, 500, 150, function(value)
 	aimbotFov = value
 	fovCircle.Size = UDim2.fromOffset(aimbotFov * 2, aimbotFov * 2)
 	fovCircle.Position = UDim2.new(0.5, -aimbotFov, 0.5, -aimbotFov)
 end)
-
 createSliderWithInput(aimbotTab, "Smoothness", 0, 100, 30, function(value)
 	aimbotSmoothness = value / 100
 end)
-
 createLabel(aimbotTab, "AimBot Controls")
-
 createButton(aimbotTab, "Enable AimBot", function(active)
 	aimbotEnabled = active
 	fovCircle.Visible = active
@@ -1474,11 +1265,9 @@ createButton(aimbotTab, "Enable AimBot", function(active)
 				if not myChar then return end
 				local myHrp = myChar:FindFirstChild("HumanoidRootPart")
 				if not myHrp then return end
-
 				local mousePos = UserInputService:GetMouseLocation()
 				local closestPlayer = nil
 				local closestScore = math.huge
-
 				for _, p in pairs(Players:GetPlayers()) do
 					if p ~= player and p.Character and isPlayerSelected(p) then
 						local hum = p.Character:FindFirstChildOfClass("Humanoid")
@@ -1507,7 +1296,6 @@ createButton(aimbotTab, "Enable AimBot", function(active)
 						end
 					end
 				end
-
 				if closestPlayer and closestPlayer.Character then
 					local targetPart = getTargetPart(closestPlayer.Character)
 					if targetPart then
@@ -1532,7 +1320,6 @@ createButton(aimbotTab, "Enable AimBot", function(active)
 		aimbotTarget = nil
 	end
 end)
-
 createButton(aimbotTab, "Show Target ESP", function(active)
 	if active then
 		startFeature("AimbotESP", function(conns)
@@ -1565,41 +1352,30 @@ createButton(aimbotTab, "Show Target ESP", function(active)
 		end
 	end
 end)
-
--- Players tab (player selection list)
 local playersListTab = createTab("Players")
-
 local playerToggleBtn = createButton(playersListTab, "Enable Player Filter", function(active)
 	playerFilterEnabled = active
 end)
-
 createLabel(playersListTab, "Player List (check to target only selected)")
-
 local playersListContainer = Instance.new("Frame")
 playersListContainer.Size = UDim2.new(1, 0, 0, 0)
 playersListContainer.BackgroundTransparency = 1
 playersListContainer.AutomaticSize = Enum.AutomaticSize.Y
 playersListContainer.Parent = playersListTab
-
 local playersListLayout = Instance.new("UIListLayout")
 playersListLayout.Padding = UDim.new(0, 4)
 playersListLayout.Parent = playersListContainer
-
 local playerListEntries = {} -- [player] = {frame=Frame, checkbox=TextButton}
-
 local function createPlayerListEntry(p)
 	if playerListEntries[p] then return end
-
 	local entry = Instance.new("Frame")
 	entry.Size = UDim2.new(1, 0, 0, 30)
 	entry.BackgroundColor3 = THEME.ButtonBg
 	entry.BorderSizePixel = 0
 	entry.Parent = playersListContainer
-
 	local entryCorner = Instance.new("UICorner")
 	entryCorner.CornerRadius = UDim.new(0, 4)
 	entryCorner.Parent = entry
-
 	local checkbox = Instance.new("TextButton")
 	checkbox.Size = UDim2.new(0, 24, 0, 24)
 	checkbox.Position = UDim2.new(0, 4, 0.5, -12)
@@ -1610,16 +1386,13 @@ local function createPlayerListEntry(p)
 	checkbox.TextSize = 16
 	checkbox.TextColor3 = THEME.AccentBright
 	checkbox.Parent = entry
-
 	local cbCorner = Instance.new("UICorner")
 	cbCorner.CornerRadius = UDim.new(0, 4)
 	cbCorner.Parent = checkbox
-
 	local cbStroke = Instance.new("UIStroke")
 	cbStroke.Color = THEME.Accent
 	cbStroke.Thickness = 1
 	cbStroke.Parent = checkbox
-
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Size = UDim2.new(1, -36, 1, 0)
 	nameLabel.Position = UDim2.new(0, 34, 0, 0)
@@ -1630,7 +1403,6 @@ local function createPlayerListEntry(p)
 	nameLabel.TextSize = 13
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Parent = entry
-
 	local checked = false
 	local function updateVisual()
 		if checked then
@@ -1645,15 +1417,12 @@ local function createPlayerListEntry(p)
 			entry.BackgroundColor3 = THEME.ButtonBg
 		end
 	end
-
 	checkbox.MouseButton1Click:Connect(function()
 		checked = not checked
 		updateVisual()
 	end)
-
 	playerListEntries[p] = {frame = entry, checkbox = checkbox, nameLabel = nameLabel, updateVisual = updateVisual}
 end
-
 local function removePlayerListEntry(p)
 	if playerListEntries[p] then
 		playerListEntries[p].frame:Destroy()
@@ -1661,26 +1430,19 @@ local function removePlayerListEntry(p)
 		selectedPlayers[p] = nil
 	end
 end
-
--- Populate initial list
 for _, p in pairs(Players:GetPlayers()) do
 	if p ~= player then
 		createPlayerListEntry(p)
 	end
 end
-
--- Update list when players join/leave
 Players.PlayerAdded:Connect(function(p)
 	createPlayerListEntry(p)
 end)
 Players.PlayerRemoving:Connect(function(p)
 	removePlayerListEntry(p)
 end)
-
 local serverTab = createTab("Server")
-
 createLabel(serverTab, "Server Info")
-
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.new(1, 0, 0, 60)
 infoLabel.BackgroundTransparency = 1
@@ -1692,7 +1454,6 @@ infoLabel.TextWrapped = true
 infoLabel.TextXAlignment = Enum.TextXAlignment.Left
 infoLabel.TextYAlignment = Enum.TextYAlignment.Top
 infoLabel.Parent = serverTab
-
 local function updateServerInfo()
 	local players = Players:GetPlayers()
 	local info = "Players online: " .. #players .. "\n"
@@ -1701,9 +1462,7 @@ local function updateServerInfo()
 	infoLabel.Text = info
 end
 updateServerInfo()
-
 createLabel(serverTab, "Server Actions")
-
 createButton(serverTab, "FPS Boost", function(active)
 	if active then
 		startFeature("FPSBoost", function()
@@ -1724,12 +1483,9 @@ createButton(serverTab, "FPS Boost", function(active)
 		game:GetService("Lighting").GlobalShadows = true
 	end
 end)
-
 createButton(playersListTab, "Explode All Players", function(active)
-	-- Пытаемся через remotes (серверный эффект для всех)
 	if not fireAllRemotes("explode") then
 		if not fireAllRemotes("all") then
-			-- Фолбэк: клиентский взрыв (виден только мне)
 			for _, p in pairs(Players:GetPlayers()) do
 				local char = p.Character
 				if char then
@@ -1746,7 +1502,6 @@ createButton(playersListTab, "Explode All Players", function(active)
 		end
 	end
 end)
-
 createButton(playersListTab, "Fling All", function(active)
 	if active then
 		startFeature("FlingAll", function(conns)
@@ -1754,16 +1509,12 @@ createButton(playersListTab, "Fling All", function(active)
 			if not myChar then return end
 			local myHrp = myChar:FindFirstChild("HumanoidRootPart")
 			if not myHrp then return end
-
-			-- Create spinning force on our character (very fast rotation)
 			local spin = Instance.new("BodyAngularVelocity")
 			spin.Name = "FlingSpin"
 			spin.AngularVelocity = Vector3.new(0, 99999, 0)
 			spin.MaxTorque = Vector3.new(0, math.huge, 0)
 			spin.P = 10000
 			spin.Parent = myHrp
-
-			-- Continuously teleport into each player to fling them
 			local function getValidTargets()
 				local targets = {}
 				for _, p in pairs(Players:GetPlayers()) do
@@ -1776,45 +1527,29 @@ createButton(playersListTab, "Fling All", function(active)
 				end
 				return targets
 			end
-
 			while true do
 				local targets = getValidTargets()
 				for _, target in pairs(targets) do
 					local targetHrp = target.hrp
 					local targetPlayer = target.player
-
-					-- Record target's position before flinging
 					local startPos = targetHrp.Position
 					local flingStart = tick()
-
-					-- Aggressively teleport into the target in a tight loop
-					-- This keeps us inside the target so spin transfers to them
 					while tick() - flingStart < 5 do
-						-- Check if target still exists
 						if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
 							break
 						end
-
 						local nowPos = targetHrp.Position
 						local distFromStart = (nowPos - startPos).Magnitude
-
-						-- Check if target TP'd away (moved more than 50 studs)
 						if distFromStart > 50 then
 							break
 						end
-
-						-- Check if target has been flung (moving fast)
 						local velocity = targetHrp.AssemblyLinearVelocity
 						if velocity.Magnitude > 50 then
 							break
 						end
-
-						-- Keep teleporting directly into the target every frame
 						myHrp.CFrame = targetHrp.CFrame + Vector3.new(math.random(-1, 1), 0, math.random(-1, 1))
 						task.wait(0.03)
 					end
-
-					-- Small delay before moving to next player
 					task.wait(0.1)
 				end
 				task.wait(0.1)
@@ -1822,7 +1557,6 @@ createButton(playersListTab, "Fling All", function(active)
 		end)
 	else
 		stopFeature("FlingAll")
-		-- Remove spinning force
 		local myChar = player.Character
 		if myChar then
 			local myHrp = myChar:FindFirstChild("HumanoidRootPart")
@@ -1833,7 +1567,6 @@ createButton(playersListTab, "Fling All", function(active)
 		end
 	end
 end)
-
 createButton(serverTab, "Laugh", function(active)
 	local laughIds = {
 		134465374070275,
@@ -1852,7 +1585,6 @@ createButton(serverTab, "Laugh", function(active)
 		sound:Destroy()
 	end)
 end)
-
 createButton(playerTab, "Anti-AFK", function(active)
 	if active then
 		startFeature("AntiAFK", function()
@@ -1871,12 +1603,8 @@ createButton(playerTab, "Anti-AFK", function(active)
 		stopFeature("AntiAFK")
 	end
 end)
-
--- Settings tab
 local settingsTab = createTab("Settings")
-
 createLabel(settingsTab, "Made by kaban15083 and Lunaxxux1507 !")
-
 createButton(settingsTab, "Hide Top Banner", function(active)
 	if active then
 		bannerGui.Enabled = false
@@ -1884,9 +1612,6 @@ createButton(settingsTab, "Hide Top Banner", function(active)
 		bannerGui.Enabled = true
 	end
 end)
-
-
-
 createButton(settingsTab, "Unload Script", function(active)
 	for name, _ in pairs(featureData) do
 		stopFeature(name)
@@ -1896,12 +1621,10 @@ createButton(settingsTab, "Unload Script", function(active)
 	bannerGui:Destroy()
 	reopenGui:Destroy()
 end)
-
 tabs["Player"].button.TextColor3 = THEME.AccentBright
 tabs["Player"].button.BackgroundColor3 = THEME.ButtonActive
 tabs["Player"].content.Visible = true
 activeTab = "Player"
-
 panel.Size = UDim2.new(0, 420, 0, 0)
 panel.ClipsDescendants = true
 TweenService:Create(panel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
