@@ -13,7 +13,7 @@ local function scanRemotes()
 			print("[C00lkidd Scan] Найден remote:", obj.ClassName, obj:GetFullName())
 		end
 	end
-	print("[C00lkidd Scan] Всего remotes: " .. #foundRemotes)
+	print("[C00lkidd Scan] remotes: " .. #foundRemotes)
 end
 task.spawn(function()
 	scanRemotes()
